@@ -1,7 +1,7 @@
 'use strict';
 // عامل الخدمة: يخزّن ملفات المحرك والألعاب مرة واحدة ثم يخدمها بلا شبكة. لا يطلب شيئًا من خارج الأصل ولا يرسل بيانات.
 // ربط الإصدار: غيّر VERSION هنا مع VERSION في engine.js (اختبار tests/run-portable.mjs يتحقق من تطابقهما) فيُنشأ مخزن جديد ويُحذف القديم.
-const VERSION = '0.4.4', CACHE = 'cam-games-' + VERSION;
+const VERSION = '0.4.5', CACHE = 'cam-games-' + VERSION;
 const CORE = ['./', 'index.html', 'engine.js', 'tracker.js', 'draw.js', 'runtime.js', 'launcher.js', 'mic.js', 'sensors.js', 'series.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'series.jpg', 'games/index.txt'];
 addEventListener('install', e => e.waitUntil((async () => {
   const c = await caches.open(CACHE);

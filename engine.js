@@ -1,7 +1,7 @@
 'use strict';
 // المضيف: يملك الكاميرا والصوت والحلقة والحارس والرسم. كود اللعبة يعمل في Web Worker قابل للإنهاء (terminate) ولا يعمل أي سطر منه في هذا الخيط. لا ثقة بشيء قادم منه.
 (() => {
-  const VERSION = '0.4.4', MAJOR = 0, BUDGET_MS = 8, HB_TIMEOUT = 2000, BOOT_TIMEOUT = 4000, ALIVE_TIMEOUT = 2500, MAX_GAME_BYTES = 200000;
+  const VERSION = '0.4.5', MAJOR = 0, BUDGET_MS = 8, HB_TIMEOUT = 2000, BOOT_TIMEOUT = 4000, ALIVE_TIMEOUT = 2500, MAX_GAME_BYTES = 200000;
   const KNOWN = ['camera.view', 'camera.color', 'camera.motion', 'camera.lowres', 'camera.calibrate', 'audio', 'haptic', 'hud', 'players.local', 'camera.lanes', 'camera.playercolors', 'audio.mic', 'motion.device'];
   const PLANNED = ['qr', 'players.network', 'hand', 'pose'];
   const MAX_MSG_PER_S = 400, MAX_BYTES = new URLSearchParams(location.search).get('debug') === '1' ? 8192 : 2048, MAX_TRACKS = 4, MEM_LIMIT = 192e6;
@@ -395,8 +395,11 @@
     if (crashed) { const w = document.createElement('p'); w.className = 'warn'; w.textContent = 'أُعيد تحميل الصفحة أثناء لعبة «' + crashed.t + '» — غالبًا استهلكت ذاكرة الجهاز. لم تُشغَّل تلقائيًا؛ اخترها من جديد إن أردت.'; list.before(w); diag('crash-recovered', crashed.t); }
     try {
       const names = (await (await fetch('games/index.txt')).text()).split('\n').map(s => s.trim()).filter(s => /^[\w.-]+\.js$/.test(s) && (DEBUG || !s.startsWith('zz-'))); // zz-* ألعاب اختبار للمطوّر: تظهر في ?debug=1 فقط
-      for (const nm of names) {
-        const h = parseHeader(await (await fetch('games/' + nm)).text()), b = document.createElement('button'), ac = accentOf(h), mk = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt) e.textContent = txt; return e; };
+      // تُجلب رؤوس الألعاب معًا لا واحدة بعد الأخرى (على شبكة بطيئة كانت 6 ألعاب × ~3ث قبل ظهور القائمة)؛ لعبة تعذّر جلبها تُتخطّى ولا تُسقط القائمة كلها
+      const texts = await Promise.all(names.map(nm => fetch('games/' + nm).then(r => r.ok ? r.text() : null, () => null)));
+      for (let gi = 0; gi < names.length; gi++) {
+        const nm = names[gi]; if (texts[gi] == null) continue;
+        const h = parseHeader(texts[gi]), b = document.createElement('button'), ac = accentOf(h), mk = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt) e.textContent = txt; return e; };
         b.className = 'card'; b.style.setProperty('--ac', ac.c); b.style.setProperty('--ac-hi', ac.hi); b.style.setProperty('--ac-lo', ac.lo);
         const cover = mk('span', 'cover'), ic = capIcons(h.caps), art = mk('span', 'art', ic.length ? ic[0][0] : '🎮'); art.setAttribute('aria-hidden', 'true');
         const img = new Image(); img.alt = ''; img.decoding = 'async'; img.className = 'pic'; img.onload = () => cover.classList.add('has'); img.onerror = () => img.remove(); img.src = 'games/' + nm.replace(/\.js$/, '') + '.cover.jpg'; cover.append(art, img);
