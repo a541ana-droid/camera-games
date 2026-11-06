@@ -1,0 +1,11 @@
+<!doctype html><meta charset="utf-8"><title>reference</title><body style="margin:0"><canvas id="c" dir="ltr"></canvas>
+<script>
+// مرجع: يشغّل render() نفسها مباشرةً على canvas حقيقي (بلا Worker). تُستعمل لمقارنة الناتج بما رسمه المضيف من مخزن الأوامر. تُشغَّل من اختبار الـparity فقط.
+window.draw = async (gameUrl, w, h, assets) => {
+  const src = await (await fetch(gameUrl)).text(); let game; const defineGame = g => { game = g; };
+  const imgs = {}; for (const [n, u] of Object.entries(assets)) { const im = new Image(); im.src = u; await im.decode(); imgs[n] = im; }
+  (new Function('defineGame', src))(defineGame);
+  const c = document.getElementById('c'); c.width = w; c.height = h; const x = c.getContext('2d');
+  game.init({ assets: { image: n => imgs[n] } }); game.render(x, w, h); return c.toDataURL('image/png');
+};
+</script>

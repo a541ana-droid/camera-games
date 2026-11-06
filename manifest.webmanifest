@@ -1,0 +1,19 @@
+{
+  "name": "ألعاب الكاميرا",
+  "short_name": "ألعاب الكاميرا",
+  "description": "ألعاب تلعبها بحركتك وألوانك أمام الكاميرا — تعمل بلا إنترنت ولا تُرسل شيئًا.",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "any",
+  "background_color": "#0f0d1a",
+  "theme_color": "#0f0d1a",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

@@ -1,0 +1,15 @@
+<!doctype html><meta charset="utf-8"><title>probe</title><body>
+<script>
+// يختبر: هل ينشئ iframe معزول (sandbox="allow-scripts" أصل null) + CSP صارم عاملًا من blob؟ ثم هل يصل المنفذ؟ النتيجة في window.__probe و/__report
+const out = window.__probe = { steps: [] };
+const nc = 'abc123';
+const doc = '<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'nonce-' + nc + '\' blob:; worker-src blob:; connect-src \'none\'; form-action \'none\'; base-uri \'none\'"><script nonce="' + nc + '">' +
+ '(()=>{const P=parent;const up=m=>P.postMessage(m,"*");up({s:"launcher-started"});addEventListener("message",e=>{const d=e.data;up({s:"got-msg",ports:e.ports.length});' +
+ 'try{const u=URL.createObjectURL(new Blob(["postMessage({alive:1});onmessage=e=>{e.ports[0].postMessage({echo:1,fetch:typeof fetch,csp:0});try{fetch(\'http://127.0.0.1:8453/EXFIL/probe\').then(()=>e.ports[0].postMessage({fetchResult:\'OPEN\'},[]),x=>e.ports[0].postMessage({fetchResult:\'blocked:\'+x.name}))}catch(x){e.ports[0].postMessage({fetchResult:\'threw:\'+x.name})}try{eval(\'1\');e.ports[0].postMessage({eval:\'OPEN\'})}catch(x){e.ports[0].postMessage({eval:\'blocked:\'+x.name})}}"],{type:"text/javascript"}));' +
+ 'const w=new Worker(u);up({s:"worker-created"});w.onmessage=x=>up({s:"worker-msg",d:x.data});w.onerror=x=>up({s:"worker-error",m:String(x.message)});w.postMessage(1,[e.ports[0]])}catch(x){up({s:"fail",m:String(x)})}});})();<\/script>';
+const f = document.createElement('iframe'); f.setAttribute('sandbox', 'allow-scripts'); f.srcdoc = doc;
+addEventListener('message', e => { if (e.source === f.contentWindow) out.steps.push(e.data); });
+f.onload = () => { const ch = new MessageChannel(); ch.port1.onmessage = e => out.steps.push({ port: e.data }); f.contentWindow.postMessage({ hello: 1 }, '*', [ch.port2]); };
+document.body.append(f);
+setTimeout(() => { fetch('/__report', { method: 'POST', body: JSON.stringify({ probe: out, ua: navigator.userAgent }) }).catch(() => {}); }, 2500);
+</script>
