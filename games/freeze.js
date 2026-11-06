@@ -14,7 +14,7 @@ function startMusic() { state = 'music'; timer = 3 + Math.random() * 3; beat = 0
 defineGame({
   init(a) {
     api = a; ui = a.ui; // الصورة لا تُعرض: اللعبة تقيس الحركة فقط ومقياسها على الشاشة يكفي
-    players = api.players.local({ names: ['اللاعب ١', 'اللاعب ٢'] });
+    players = api.players.local({ names: ['اللاعب 1', 'اللاعب 2'] });
     motion = api.track.motion({ grid: [1, 1], threshold: 28 }, d => { energy = d.energy; });
     setHud();
   },

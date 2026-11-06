@@ -8,7 +8,7 @@ let report = null, ui, api, t0 = -1, tDone = -1, rects = null, T = 0, checks = n
 const R = { x: 100, y: 100, w: 100, h: 40 };
 function selfCheck() {
   const bad = [], ok = (n, v) => { if (!v) bad.push(n); };
-  ok('num0', ui.num(0) === '٠'); ok('num1234', ui.num(1234) === '١٢٣٤'); ok('numNeg', ui.num(-5) === '‎−٥'); ok('numRound', ui.num(2.6) === '٣'); ok('numNaN', ui.num(NaN) === '٠'); ok('numBig', ui.num(1e30).length < 20);
+  ok('num0', ui.num(0) === '0'); ok('num1234', ui.num(1234) === '1234'); ok('numNeg', ui.num(-5) === '‎−5'); ok('numRound', ui.num(2.6) === '3'); ok('numNaN', ui.num(NaN) === '0'); ok('numBig', ui.num(1e30).length < 20);
   ok('frozen', Object.isFrozen(ui) && Object.isFrozen(ui.theme) && Object.isFrozen(ui.theme.players));
   ok('accent', ui.theme.accent === '#ff7a45' && ui.theme.onAccent === '#0f0d1a'); ok('players', ui.theme.players.length === 4 && ui.theme.players[2].shape === 'square' && ui.theme.players[0].color === '#4da3ff');
   const s = api.view.size(); ok('hitIn', ui.hit(R, 150 / s.w, 120 / s.h)); ok('hitOut', !ui.hit(R, 20 / s.w, 20 / s.h)); ok('hitSlop', ui.hit({ x: 100, y: 100, w: 100, h: 20 }, 150 / s.w, 92 / s.h)); // مدى لمس ≥ 48px

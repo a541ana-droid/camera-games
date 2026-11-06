@@ -1,12 +1,12 @@
 'use strict';
 // المضيف: يملك الكاميرا والصوت والحلقة والحارس والرسم. كود اللعبة يعمل في Web Worker قابل للإنهاء (terminate) ولا يعمل أي سطر منه في هذا الخيط. لا ثقة بشيء قادم منه.
 (() => {
-  const VERSION = '0.4.5', MAJOR = 0, BUDGET_MS = 8, HB_TIMEOUT = 2000, BOOT_TIMEOUT = 4000, ALIVE_TIMEOUT = 2500, MAX_GAME_BYTES = 200000;
-  const KNOWN = ['camera.view', 'camera.color', 'camera.motion', 'camera.lowres', 'camera.calibrate', 'audio', 'haptic', 'hud', 'players.local', 'camera.lanes', 'camera.playercolors', 'audio.mic', 'motion.device'];
+  const VERSION = '0.5.0', MAJOR = 0, BUDGET_MS = 8, HB_TIMEOUT = 2000, BOOT_TIMEOUT = 4000, ALIVE_TIMEOUT = 2500, MAX_GAME_BYTES = 200000;
+  const KNOWN = ['camera.view', 'camera.color', 'camera.motion', 'camera.lowres', 'camera.calibrate', 'audio', 'haptic', 'hud', 'players.local', 'camera.lanes', 'camera.playercolors', 'audio.mic', 'motion.device', 'players.pads'];
   const PLANNED = ['qr', 'players.network', 'hand', 'pose'];
   const MAX_MSG_PER_S = 400, MAX_BYTES = new URLSearchParams(location.search).get('debug') === '1' ? 8192 : 2048, MAX_TRACKS = 4, MEM_LIMIT = 192e6;
   const memDetail = v => 'طلبت نحو ' + Math.round(n(v, 0, 1e12, 0) / 1e6) + ' ميغابايت.';
-  const RATE = { 'mic.start': 5, 'audio.tone': 30, 'audio.melody': 10, haptic: 10, hud: 30 };
+  const RATE = { 'mic.start': 5, 'audio.tone': 30, 'audio.melody': 10, haptic: 10, hud: 30, 'pads.say': 20, 'pads.vib': 20, 'pads.ctl': 10 };
   const $ = id => document.getElementById(id);
   const qs = new URLSearchParams(location.search), DEBUG = qs.get('debug') === '1', ENDMAX = DEBUG ? 4000 : 300; // نص نهاية اللعبة: 300 حرفًا (4000 في ?debug=1 كي تحمل الاختبارات نتائجها)
   const DEBUG_NOSW = new URLSearchParams(location.search).get('nosw') === '1';
@@ -35,7 +35,7 @@
   };
 
   function parseHeader(text) {
-    const h = { title: '', desc: '', engine: '', caps: [], assets: '', series: '', accent: '' };
+    const h = { title: '', desc: '', engine: '', caps: [], assets: '', series: '', accent: '', pads: '' };
     for (const line of text.split('\n', 40)) {
       const m = /^\/\/\s*@(\w+)\s*(.*)$/.exec(line.trim()); if (!m) continue;
       if (m[1] === 'capabilities') h.caps = m[2].split(/\s+/).filter(Boolean); else if (m[1] in h) h[m[1]] = m[2].trim();
@@ -52,21 +52,22 @@
 
   // بصمة اللعبة (// @accent #rrggbb): غير صالحة أو قليلة التباين مع الخلفية الداكنة ⇒ لون المحرك الافتراضي (DESIGN.md §2). تُحسب منها درجتان للغلاف.
   const BRAND = '#7c6cff', hex2 = c => [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16)), mix = (c, t, k) => '#' + hex2(c).map((v, i) => Math.round(v + (t[i] - v) * k).toString(16).padStart(2, '0')).join('');
-  const arn = v => String(v).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]); // أرقام عربية كبقية الواجهة
+  const arn = String; // أرقام 0-9 كبقية الواجهة
   function accentOf(h) {
     const a = h && /^#[0-9a-f]{6}$/i.test(h.accent || '') ? h.accent.toLowerCase() : BRAND, l = hex2(a).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }), L = 0.2126 * l[0] + 0.7152 * l[1] + 0.0722 * l[2];
     const c = L < 0.12 ? BRAND : a; return { c, hi: mix(c, [255, 255, 255], 0.25), lo: mix(c, [0, 0, 0], 0.45) };
   }
-  const CAPI = [['camera.', '📷', 'كاميرا'], ['audio.mic', '🎤', 'ميكروفون'], ['motion.device', '📱', 'حركة الجوال'], ['players.local', '👥', 'لاعبون'], ['camera.lanes', '👥', 'لاعبون']];
+  const CAPI = [['players.pads', '🎮', 'بالجوالات'], ['camera.', '📷', 'كاميرا'], ['audio.mic', '🎤', 'ميكروفون'], ['motion.device', '📱', 'حركة الجوال'], ['players.local', '👥', 'لاعبون'], ['camera.lanes', '👥', 'لاعبون']];
   const capIcons = caps => { const out = []; for (const [k, i, n] of CAPI) if (caps.some(c => c.startsWith(k)) && !out.some(o => o[0] === i)) out.push([i, n]); return out; };
 
   // ---------- العرض ----------
-  function show(which) { menu.hidden = which !== 'menu'; stage.hidden = which !== 'stage'; $('ser').hidden = which !== 'ser'; }
+  function show(which) { for (const v of ['menu', 'stage', 'ser', 'tv', 'pad']) { const el = $(v); if (el) el.hidden = which !== v; } }
   const SER = () => window.Series && Series.active(); // سلسلة ألعاب جارية؟ (المنطق كله في series.js)
+  const PADS = () => window.Pads && Pads.playing(); // لعبة جوالات من ردهة التلفاز جارية؟ (tv.js)
   function overlay(text, opts = {}) {
     $('ovT').textContent = text; $('ov').className = opts.err ? 'err' : opts.end ? 'end' : ''; $('ov').hidden = false;
     $('ovI').textContent = opts.err ? '⚠️' : opts.end ? '🏁' : '⏳'; $('ovK').textContent = opts.title || (opts.err ? 'تعذّر المتابعة' : '');
-    $('ovA').hidden = !opts.again; $('ovA').onclick = opts.again || null; $('ovB').onclick = () => { stopGame('exit'); show('menu'); };
+    $('ovA').hidden = !opts.again; $('ovA').onclick = opts.again || null; $('ovB').onclick = () => { stopGame('exit'); if (window.Pads && Pads.active()) Pads.open(); else show('menu'); };
   }
   function hud(o) {
     for (const [k, id] of [['score', 'hScore'], ['title', 'hTitle'], ['time', 'hTime']]) {
@@ -168,6 +169,7 @@
       const w = stage.clientWidth, h = stage.clientHeight, m = { t: 'tick', ts };
       if (w !== S.sw || h !== S.sh) { S.sw = w; S.sh = h; Draw.resize(w, h, window.devicePixelRatio); m.w = w; m.h = h; }
       if (S.pq.length) { m.p = S.pq; S.pq = []; }
+      if (S.pads) m.pi = Pads.inputs(); // مدخلات الأذرع: أرقام فقط، مقطوعة الحدود في tv.js (ENGINE.md §3.4)
       S.inflight = true; S.tickAt = performance.now(); S.port.postMessage(m);
     }
   }
@@ -198,6 +200,9 @@
   // ---------- استقبال رسائل اللعبة (لا ثقة بشيء) ----------
   const n = (v, a, b, d) => (typeof v === 'number' && isFinite(v)) ? Math.min(b, Math.max(a, v)) : d;
   const hasCap = c => S.caps.has(c);
+  // نتيجة الفريقين (اختيارية): teamScores = [أ، ب] أرقام منتهية فقط
+  const TEAMN = ['الفريق أ', 'الفريق ب'];
+  function teamLine(t) { if (!Array.isArray(t) || t.length !== 2) return ''; const a = n(t[0], -1e9, 1e9, NaN), b = n(t[1], -1e9, 1e9, NaN); if (a !== a || b !== b) return ''; return TEAMN[0] + ' ' + arn(a) + ' — ' + TEAMN[1] + ' ' + arn(b) + '\n' + (a === b ? 'تعادل الفريقان' : 'فاز ' + TEAMN[a > b ? 0 : 1]); }
   function violate(why) { ev('violation', why); S.viol++; if (S.viol >= 10) return stopGame('violations', true); }
   function handle(m) {
     if (!S) return;
@@ -239,10 +244,13 @@
         for (const x of m.notes.slice(0, 16)) { const ms = n(x && x.ms, 10, 1000, 150); tone(n(x && x.f, 40, 8000, 440), ms, 0.25, 'triangle', 0, at); at += ms / 1000; } break; }
       case 'hud': if (!cap('hud')) return; hud({ score: m.score == null ? undefined : String(m.score).slice(0, 24), time: m.time == null ? undefined : String(m.time).slice(0, 12), title: m.title == null ? undefined : String(m.title).slice(0, 40) }); break;
       case 'haptic': if (!cap('haptic')) return; if (navigator.vibrate) navigator.vibrate(n(m.ms, 1, 200, 30)); break;
-      case 'end': ev('end', { score: n(m.score, -1e9, 1e9, 0), text: String(m.text || '').slice(0, ENDMAX) });
-        { const sc = n(m.score, -1e9, 1e9, 0), tx = String(m.text || '').slice(0, 300), src = S.src, ttl = S.head && S.head.title || ''; stopGame('end', false);
+      case 'pads.say': case 'pads.vib': case 'pads.ctl': { if (!cap('players.pads')) return; const i = n(m.i, -1, 7, -2); if (i === -2 || (i | 0) !== i) return violate('pad-index'); if (!window.Pads) return;
+        if (m.t === 'pads.say') Pads.say(i, String(m.text == null ? '' : m.text).slice(0, 60)); else if (m.t === 'pads.vib') Pads.vibrate(i, n(m.ms, 1, 300, 40)); else Pads.controls(i, { stick: m.stick !== false, a: String(m.a == null ? '' : m.a).slice(0, 12), b: String(m.b == null ? '' : m.b).slice(0, 12), tilt: !!m.tilt }); break; }
+      case 'end': ev('end', { score: n(m.score, -1e9, 1e9, 0), text: String(m.text || '').slice(0, ENDMAX), scores: m.scores, ranks: m.ranks, teamScores: m.teamScores });
+        { const sc = n(m.score, -1e9, 1e9, 0), tx = String(m.text || '').slice(0, 300), src = S.src, ttl = S.head && S.head.title || '', pads = S.pads && PADS(); stopGame('end', false);
           if (SER()) { Series.result(m); break; }
-          overlay((tx ? tx + '\n' : '') + 'النتيجة: ' + arn(sc), { again: () => startGame(src), end: true, title: ttl }); } break;
+          if (pads) { Pads.ended(m); break; } // ردهة التلفاز تعرض النتيجة بالشخصيات وتبلغ كل جوال
+          const ts = teamLine(m.teamScores); overlay((tx ? tx + '\n' : '') + (ts || 'النتيجة: ' + arn(sc)), { again: () => startGame(src), end: true, title: ttl }); } break;
       case 'err':
         // فشل تحميل كود اللعبة نفسه بسبب الشبكة/الأمان (لا خطأ في كود اللعبة) داخل iframe ⇒ جرّب Worker مباشرًا من المضيف مرة واحدة
         if (m.load && !S.ready && S.mode === 'iframe' && MODE === 'auto' && (m.name === 'NetworkError' || m.name === 'SecurityError')) return fallback('load:' + m.name);
@@ -253,7 +261,8 @@
   }
 
   // ---------- دورة الحياة ----------
-  async function loadRuntime() { if (!runtimeSrc) runtimeSrc = await (await fetch('runtime.js')).text(); return runtimeSrc; }
+  // runtime.js يسبقه mascot.js (رسم الشخصيات لـui.mascot؛ يلتقطه runtime ويحذفه من النطاق العام قبل كود اللعبة)
+  async function loadRuntime() { if (!runtimeSrc) { const [m, r] = await Promise.all(['mascot.js', 'runtime.js'].map(f => fetch(f).then(x => { if (!x.ok) throw new Error('تعذّر تحميل ' + f); return x.text(); }))); runtimeSrc = m + '\n' + r; } return runtimeSrc; }
   async function getText(src) {
     if (typeof src !== 'string') return src.text;
     const r = await fetch(src); if (!r.ok) throw new Error('تعذّر تحميل ' + src); const t = await r.text(); return t;
@@ -314,6 +323,12 @@
     ev('fallback', String(why).slice(0, 100)); fellBack = true; const s = S; s.kill(); if (s.iframe) { s.iframe = null; }
     launch(s, 'host');
   }
+  // الفرق كما تراها اللعبة (api.teams): من ردهة التلفاز للجوالات، أو من الدوري للاعبين المحليين؛ وإلا لا فرق
+  function teamSpec(head) {
+    if (head.caps.includes('players.pads') && window.Pads && Pads.active()) { const md = Pads.mode(); return { mode: md, of: md === 'free' ? null : Pads.snapshot().map(p => [p.index, p.team]) }; }
+    if (SER() && Series.teams()) return { mode: 'teams', of: Series.teams().map((t, i) => [i, t]) };
+    return { mode: 'free', of: null };
+  }
   async function startGame(src) {
     stopGame('replace'); hud(null); $('ov').hidden = true; show('stage');
     const id = ++seq; overlay('جارٍ التحميل…', {}); $('ovA').hidden = true;
@@ -330,12 +345,12 @@
         if (await Sensors.permit() !== 'granted') throw new Error('رُفض إذن مستشعرات الحركة. اسمح به من إعدادات المتصفح ثم أعد المحاولة.'); }
       S = { id, src, head, caps: new Set(head.caps), tracks: new Map(), voices: 0, w0: 0, cnt: 0, typeCnt: {}, viol: 0, slow: 0, ready: false, strays: 0, paused: false, lastA: 0, raf: 0, loads: 0, t0: performance.now(), lastHb: performance.now(),
         inflight: false, tickAt: 0, pq: [], sw: 0, sh: 0, frames: 0, cmdN: 0, win: { n: 0, sum: 0, max: 0, over: 0, t: performance.now() }, wdLast: performance.now(),
-        hz: 30, pm: pmNew(performance.now()), tStart: performance.now(), perf: { n: 0, busy: 0, fps: 0, wk: 0, maxBusy: 0, best: 0, downs: 0, calm: 0, hzT: {} } };
+        hz: 30, pm: pmNew(performance.now()), tStart: performance.now(), perf: { n: 0, busy: 0, fps: 0, wk: 0, maxBusy: 0, best: 0, downs: 0, calm: 0, hzT: {} }, pads: head.caps.includes('players.pads') && !!window.Pads };
       if (head.caps.some(c => c.startsWith('camera.'))) { overlay('جارٍ فتح الكاميرا…', {}); $('ovA').hidden = true; await openCamera(); if (!S || S.id !== id) return closeCameraIfIdle(); }
       if (S.caps.has('audio')) audioCtx();
       const rt = await loadRuntime(); await loadLauncher(); if (!S || S.id !== id) return;
       S.assetInfo = await loadAssets(head, src); if (!S || S.id !== id) return;
-      const spec = { accent: head.accent ? accentOf(head).c : '', memmax: MEM_LIMIT, players: SER() ? Series.names() : null, endmax: ENDMAX, nogate: DEBUG && qs.get('nogate') === '1', version: VERSION, maxe: Draw.MAXE, cmds: Draw.spec(), defaults: Draw.DEFAULTS, mt: Draw.measureTables() };
+      const spec = { accent: head.accent ? accentOf(head).c : '', memmax: MEM_LIMIT, players: SER() ? Series.names() : null, teams: teamSpec(head), pads: head.caps.includes('players.pads') && window.Pads ? Pads.snapshot() : null, endmax: ENDMAX, nogate: DEBUG && qs.get('nogate') === '1', version: VERSION, maxe: Draw.MAXE, cmds: Draw.spec(), defaults: Draw.DEFAULTS, mt: Draw.measureTables() };
       S.wsrc = 'self.__SPEC=' + JSON.stringify(spec) + ';\n' + rt; S.gsrc = ';(function(){\n' + text + '\n})();';
       showCam(false); $('ov').hidden = true;
       S.sw = stage.clientWidth; S.sh = stage.clientHeight; Draw.resize(S.sw, S.sh, window.devicePixelRatio);
@@ -366,7 +381,7 @@
     clearInterval(s.micT); s.micWant = 0; Mic.close(); closeCamera(); hud(null); Draw.setImages([]);
     if (actx) { actx.close().catch(() => {}); actx = null; }
     const why = (msgs[reason] || 'أُغلقت اللعبة') + (detail ? '\n' + detail : '');
-    if (showErr) { if (SER()) Series.stopped(why); else overlay(why, { err: true, again: () => startGame(s.src) }); }
+    if (showErr) { if (SER()) Series.stopped(why); else if (s.pads && window.Pads && Pads.playing()) Pads.stopped(why); else overlay(why, { err: true, again: () => startGame(s.src) }); }
   }
   document.addEventListener('visibilitychange', () => {
     if (S && S.micWant) { if (document.hidden) { clearInterval(S.micT); S.micT = 0; Mic.close(); } else if (!S.micT) { const s0 = S; Mic.open().then(ok => { if (ok && S === s0) s0.micGo(); else if (!S) Mic.close(); }); } } else if (document.hidden) Mic.close();
@@ -376,7 +391,7 @@
   const ptr = (k, e) => { if (!S || !S.ready || S.pq.length >= 48) return; const r = cvs.getBoundingClientRect(); if (k !== 1 || e.buttons) S.pq.push(k, +((e.clientX - r.left) / r.width).toFixed(4), +((e.clientY - r.top) / r.height).toFixed(4)); };
   cvs.addEventListener('pointerdown', e => { e.preventDefault(); ptr(0, e); }); cvs.addEventListener('pointermove', e => ptr(1, e)); cvs.addEventListener('pointerup', e => ptr(2, e)); cvs.addEventListener('pointercancel', e => ptr(2, e));
   addEventListener('pagehide', () => stopGame('exit'));
-  $('exit').onclick = () => { stopGame('exit'); if (SER()) Series.stopped('خرجتَ من اللعبة قبل نهايتها.'); else show('menu'); };
+  $('exit').onclick = () => { const pads = PADS(); stopGame('exit'); if (SER()) Series.stopped('خرجتَ من اللعبة قبل نهايتها.'); else if (pads) Pads.stopped('exit'); else show('menu'); };
 
   // ---------- شبكة أمان أخيرة: لعبة أسقطت الصفحة كلها (نفاد ذاكرة لم يلتقطه العدّاد) ----------
   // علامة في sessionStorage أثناء اللعب تُمسح عند كل إغلاق نظامي (وعند pagehide). إن وُجدت عند التحميل فقد سقطت الصفحة أثناء اللعبة.
@@ -405,16 +420,64 @@
         const img = new Image(); img.alt = ''; img.decoding = 'async'; img.className = 'pic'; img.onload = () => cover.classList.add('has'); img.onerror = () => img.remove(); img.src = 'games/' + nm.replace(/\.js$/, '') + '.cover.jpg'; cover.append(art, img);
         const body = mk('span', 'body'), t = mk('b', '', h.title || nm), d = mk('small', '', h.desc), caps = mk('span', 'caps'), nt = mk('em'); nt.hidden = true;
         for (const [i, n] of ic) { const c = mk('span', 'cap', i); c.title = n; c.setAttribute('role', 'img'); c.setAttribute('aria-label', n); caps.append(c); }
-        body.append(t, d, caps); if (h.caps.includes('camera.view')) caps.append(mk('span', 'badge', '📷 تعرض صورتك على شاشتك')); body.append(nt); b.append(cover, body); cards.push({ b, h, n: nt });
-        b.onclick = () => { if (h.caps.includes('motion.device')) Sensors.permit(); startGame('games/' + nm); }; list.append(b);
+        if (h.caps.includes('players.pads')) caps.append(mk('span', 'badge', '📱 كل لاعب بجواله')); body.append(t, d, caps); if (h.caps.includes('camera.view')) caps.append(mk('span', 'badge', '📷 تعرض صورتك على شاشتك')); body.append(nt); b.append(cover, body); cards.push({ b, h, n: nt });
+        b.onclick = () => { if (h.caps.includes('players.pads') && window.Pads) return Pads.open('games/' + nm); if (h.caps.includes('motion.device')) Sensors.permit(); startGame('games/' + nm); }; list.append(b);
       }
     } catch (e) { list.textContent = 'تعذّر تحميل قائمة الألعاب'; }
     await Sensors.probe(); applyAvail(); $('synth').addEventListener('change', applyAvail);
     $('pick').onclick = () => $('file').click();
     $('setBtn').onclick = () => { const o = $('settings').hidden; $('settings').hidden = !o; $('setBtn').setAttribute('aria-expanded', o); };
     $('playBtn').onclick = () => { const c = cards.find(x => !x.b.disabled); list.scrollIntoView({ block: 'start' }); if (c) c.b.focus({ preventScroll: true }); };
-    $('file').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if (f) startGame({ text: await f.text() }); };
+    $('file').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if (f) { $('code').value = await f.text(); $('mkRun').click(); } };
+    maker();
   }
+  // «ألعابي» + صانع الألعاب: أي نموذج ذكاء اصطناعي، بلا مفتاح ولا خادم — ننسخ له الطلب كاملًا (القواعد + العقد) ويلصق المستخدم ردّه هنا.
+  // الكود يعمل في الصندوق المعزول نفسه الذي تعمل فيه ألعاب القائمة، ويُحفظ في هذا المتصفح فقط.
+  const MINE = 'myGames';
+  const mineGet = () => { try { const a = JSON.parse(localStorage.getItem(MINE) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
+  const mineSet = a => { try { localStorage.setItem(MINE, JSON.stringify(a)); return true; } catch (e) { return false; } };
+  function renderMine() {
+    const box = $('mine'), a = mineGet(); box.textContent = ''; $('myH').hidden = !a.length;
+    for (const g of a) {
+      const h = parseHeader(g.text), ac = accentOf(h), b = document.createElement('div'), go = document.createElement('button'), del = document.createElement('button');
+      b.className = 'card'; b.style.setProperty('--ac', ac.c); b.style.borderInlineStart = '6px solid ' + ac.c;
+      go.className = 'card'; go.style.margin = '0'; go.style.border = '0'; const t = document.createElement('b'), d = document.createElement('small');
+      t.textContent = h.title || 'لعبة بلا اسم'; d.textContent = h.desc || ''; d.style.display = 'block'; d.style.color = 'var(--mut)'; go.append(t, d);
+      go.onclick = () => { if (h.caps.includes('motion.device')) Sensors.permit(); startGame({ text: g.text }); };
+      del.className = 'del'; del.textContent = '✕'; del.setAttribute('aria-label', 'احذف ' + (h.title || 'اللعبة'));
+      del.onclick = () => { if (confirm('تحذف «' + (h.title || 'اللعبة') + '» من ألعابي؟')) { mineSet(mineGet().filter(x => x.id !== g.id)); renderMine(); } };
+      b.append(go, del); box.append(b);
+    }
+  }
+  const extractCode = t => { const m = [...t.matchAll(/```[a-zA-Z]*\s*\n([\s\S]*?)```/g)].map(x => x[1]); return (m.length ? m.sort((a, b) => b.length - a.length)[0] : t).trim(); };
+  async function buildPrompt(idea) {
+    const [p, eng, des] = await Promise.all(['PROMPT-FOR-MODELS.md', 'ENGINE.md', 'DESIGN.md'].map(f => fetch(f).then(r => { if (!r.ok) throw 0; return r.text(); })));
+    const parts = p.split(/\n---\n/), rules = (parts[1] || p).replace('(ثم الصق ENGINE.md)', '').replace(/فكرة اللعبة: ‹اكتب هنا›/, 'فكرة اللعبة: ' + idea).trim();
+    return rules + '\n\nملاحظة: سيلصق المستخدم ردّك كما هو في تطبيق «ألعاب الكاميرا» ليعمل فورًا، فاكتب الملف كاملًا في كتلة كود واحدة. إن أرسل لك رسالة خطأ من التطبيق فأعد الملف كاملًا مصحّحًا.\n\n===== ENGINE.md =====\n' + eng + '\n\n===== DESIGN.md =====\n' + des;
+  }
+  function maker() {
+    renderMine(); const msg = $('mkMsg');
+    $('mkCopy').onclick = async () => {
+      const idea = $('idea').value.trim(); if (!idea) { msg.textContent = 'اكتب فكرتك أولًا في الخانة 1.'; $('idea').focus(); return; }
+      msg.textContent = 'جارٍ التجهيز…';
+      try { const pt = buildPrompt(idea); let t; // سفاري يشترط بدء النسخ داخل اللمسة نفسها: ClipboardItem بوعد يحلّ ذلك
+        if (window.ClipboardItem && navigator.clipboard.write) { await navigator.clipboard.write([new ClipboardItem({ 'text/plain': pt.then(x => new Blob([x], { type: 'text/plain' })) })]); t = await pt; } else { t = await pt; await navigator.clipboard.writeText(t); }
+        msg.textContent = '✓ نُسخ الطلب (' + Math.round(t.length / 1000) + ' ألف حرف). افتح النموذج والصق فيه، ثم انسخ ردّه كاملًا.'; }
+      catch (e) { // النسخ الآلي ممنوع في بعض المتصفحات: نعرض الطلب محدَّدًا لينسخه المستخدم بيده
+        let t = null; try { t = await buildPrompt(idea); } catch (e2) { /* */ }
+        if (!t) { msg.textContent = 'تعذّر تجهيز الطلب (يحتاج إنترنت أول مرة). جرّب مرة أخرى.'; return; }
+        const o = $('mkOut'); o.hidden = false; o.value = t; o.focus(); o.select(); msg.textContent = 'لم يسمح المتصفح بالنسخ الآلي: النص محدَّد في الخانة أدناه، انسخه (نسخ) ثم الصقه في النموذج.'; }
+    };
+    $('mkRun').onclick = () => {
+      const text = extractCode($('code').value); if (!text) { $('code').focus(); return; }
+      const h = parseHeader(text), bad = checkHeader(h); if (bad) { msg.textContent = ''; alert('الردّ لا يبدو ملف لعبة صحيحًا:\n' + bad + '\n\nانسخ ردّ النموذج كاملًا، أو أرسل له هذه الرسالة ليصلحه.'); return; }
+      const a = mineGet().filter(x => parseHeader(x.text).title !== h.title); a.unshift({ id: Date.now().toString(36), text }); while (a.length > 30) a.pop();
+      if (!mineSet(a)) alert('ذاكرة المتصفح ممتلئة؛ احذف لعبة من «ألعابي».'); $('code').value = ''; renderMine(); startGame({ text });
+    };
+  }
+  if (window.Pads !== undefined) { /* tv.js يُحمَّل بعد المحرك */ }
+  const padsChanged = () => { if (S && S.ready && S.pads) S.port.postMessage({ t: 'pads', list: Pads.snapshot() }); };
+  E.padsChanged = padsChanged; E.ev = ev;
   E.mode = () => S && S.mode; E.fellBack = () => fellBack; E.startGame = startGame; E.show = show; E.stopGame = stopGame; E.state = () => S; E.parseHeader = parseHeader; E.accentOf = accentOf; E.audio = () => actx; E.cameraOpen = () => !!stream; E.camShown = () => camShown && !cam.classList.contains('off'); E.setFacing = f => { facing = f; }; E.sensors = Sensors;
   // تثبيت التطبيق: أندرويد/كروم يعطي حدث beforeinstallprompt فنثبّت بضغطة؛ آيفون لا يسمح بذلك فنشرح الخطوتين. يختفي داخل التطبيق المثبّت وبعد «لاحقًا».
   (() => {
@@ -429,8 +492,20 @@
     go.onclick = async () => { if (!ev) return; ev.prompt(); const r = await ev.userChoice.catch(() => null); ev = null; if (r && r.outcome === 'accepted') box.hidden = true; };
     $('instNo').onclick = () => { box.hidden = true; try { localStorage.setItem('instLater', Date.now() + 7 * 864e5); } catch (e) { /* */ } };
   })();
+  // عدّاد الزوّار: خدمة مجانية بلا حساب ولا كوكيز (abacus)؛ كل جهاز يُحسب مرة في اليوم، ولا يُرسل شيء غير «زيارة». لا يعمل في الاختبار المحلي.
+  (() => {
+    const out = $('stats'), B = 'https://abacus.jasoncameron.dev/', K = 'a541ana-camera-games/visits';
+    if (!out || DEBUG || !/github\.io$/.test(location.hostname)) return;
+    let day = ''; try { day = localStorage.getItem('visitDay') || ''; } catch (e) { /* */ }
+    const today = new Date().toISOString().slice(0, 10), op = day === today ? 'get/' : 'hit/';
+    fetch(B + op + K, { cache: 'no-store', credentials: 'omit', referrerPolicy: 'no-referrer' }).then(r => r.json()).then(j => {
+      if (typeof j.value === 'number') { out.textContent = j.value.toLocaleString('en-US'); if (op === 'hit/') try { localStorage.setItem('visitDay', today); } catch (e) { /* */ } }
+    }).catch(() => {});
+  })();
   if ('serviceWorker' in navigator && window.isSecureContext && !DEBUG_NOSW) navigator.serviceWorker.register('sw.js').catch(() => {});
-  show('menu'); buildMenu();
+  // الجوال كذراع (#pad=رمز): pad.js يتولّى الصفحة ولا تُبنى القائمة (أخفّ على الجوال)؛ تُبنى إن عاد إليها
+  let built = false; const buildOnce = E.buildMenuOnce = () => { if (!built) { built = true; buildMenu(); } };
+  if (/^#pad/.test(location.hash)) show('pad'); else { show('menu'); buildOnce(); }
   const g = qs.get('game');
   if (g && /^[\w./-]+\.js$/.test(g) && !g.includes('..')) { if (DEBUG) { $('synth').checked = qs.get('synth') === '1'; const s = document.createElement('script'); s.src = 'debug.js'; s.onload = () => { if (qs.get('auto') === '1') startGame(g); }; document.head.append(s); } }
   else if (DEBUG) { const s = document.createElement('script'); s.src = 'debug.js'; document.head.append(s); }

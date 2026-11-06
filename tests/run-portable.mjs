@@ -12,7 +12,11 @@ try {
   { const core = /const CORE = \[([^\]]*)\]/.exec(rd('sw.js'))[1], srcs = [...rd('index.html').matchAll(/<script src="([^"?]+)/g)].map(m => m[1]), miss = srcs.filter(s => !core.includes("'" + s + "'"));
     ok('every <script> of index.html is precached by sw.js', !miss.length, { miss }); }
   const csp = /Content-Security-Policy" content="([^"]+)"/.exec(rd('index.html'))[1];
-  ok('CSP: connect-src self فقط، بلا unsafe-eval ولا مصادر خارجية', /connect-src 'self';/.test(csp) && !/unsafe-eval|https?:|\*/.test(csp) && /default-src 'none'/.test(csp), csp);
+  { // connect-src = 'self' + عدّاد الزيارات المعلن + مرحّلات Nostr المثبّتة في net.js بالضبط (للمصافحة فقط)؛ ولا شيء غيرها في أي توجيه آخر
+    const relays = /const RELAYS = \[([^\]]*)\]/.exec(rd('net.js'))[1].match(/'([^']+)'/g).map(x => 'wss://' + x.slice(1, -1)).sort();
+    const conn = (/connect-src ([^;]+)/.exec(csp) || [, ''])[1].trim().split(/\s+/), rest = csp.replace(/connect-src [^;]+;?/, '');
+    const extra = conn.filter(x => x !== "'self'" && x !== 'https://abacus.jasoncameron.dev' && !relays.includes(x)), missing = relays.filter(r => !conn.includes(r));
+    ok('CSP: connect-src = self + العدّاد + مرحّلات net.js فقط، ولا مصادر خارجية في غيره، بلا unsafe-eval', conn[0] === "'self'" && !extra.length && !missing.length && !/unsafe-eval|https?:|wss?:|\*/.test(rest) && /default-src 'none'/.test(csp), { extra, missing }); }
 
   await c.send('Network.enable');
   await c.nav(BASE + '/index.html', 2500);

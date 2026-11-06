@@ -6,7 +6,7 @@
 // مرجع القدرتين الجديدتين: api.track.lanes (حارات بحسب الحركة) و api.track.colorPerPlayer (لون لكل لاعب).
 // داخل سلسلة (دوري) تُلعب مرة واحدة بعدد حاراتها = عدد لاعبي السلسلة، وتُبلغ بالمراكز عبر api.end({ranks, scores}) فتُحتسب النقاط.
 
-const NAMES = ['١', '٢', '٣', '٤'], COLORS = ['red', 'green', 'blue', 'yellow'], COLOR_AR = ['أحمر', 'أخضر', 'أزرق', 'أصفر'], HEX = ['#e5484d', '#4cc38a', '#3b82f6', '#f5d90a'];
+const NAMES = ['1', '2', '3', '4'], COLORS = ['red', 'green', 'blue', 'yellow'], COLOR_AR = ['أحمر', 'أخضر', 'أزرق', 'أصفر'], HEX = ['#e5484d', '#4cc38a', '#3b82f6', '#f5d90a'];
 const FULL_WAVE = 0.08, SPEED = 0.13; // طاقة حارة تعدّ "تلويحًا كاملًا"، وأقصى سرعة (حصة من الطريق/ث)
 let api, ui, state = 'intro', count = 2, mode = 'motion', handle = null, lanes = [], pos = [], speed = [], last = [], t = 0, winner = -1, cd = 0, W = 400, H = 700;
 const cntR = [], modeR = [], startR = { x: 0, y: 0, w: 180, h: 56 };
@@ -40,7 +40,7 @@ function results() { // مراكز اللاعبين: الأقرب إلى الخ�
 }
 
 defineGame({
-  init(a) { api = a; ui = a.ui; api.view.showCamera(true); const s = api.view.size(); W = s.w; H = s.h; layout(W, H); count = Math.max(2, Math.min(4, api.players.local({ names: ['١', '٢'] }).names.length)); },
+  init(a) { api = a; ui = a.ui; api.view.showCamera(true); const s = api.view.size(); W = s.w; H = s.h; layout(W, H); count = Math.max(2, Math.min(4, api.players.local({ names: ['1', '2'] }).names.length)); },
   onResize(w, h) { W = w; H = h; layout(w, h); },
   onTap(x, y) {
     if (state !== 'intro') return;
@@ -66,7 +66,7 @@ defineGame({
     if (state === 'intro') {
       ui.background(ctx, 0.9); ui.bigText(ctx, 'سباق الحارات', { y: h * 0.2, size: Math.min(h * 0.07, w * 0.12) });
       ui.text(ctx, 'اختر عدد اللاعبين وطريقة التتبع', w / 2, h * 0.29, 16, th.mut);
-      for (let i = 0; i < 3; i++) ui.button(ctx, cntR[i], ['٢ لاعبان', '٣ لاعبين', '٤ لاعبين'][i], { on: count === i + 2 });
+      for (let i = 0; i < 3; i++) ui.button(ctx, cntR[i], ['2 لاعبان', '3 لاعبين', '4 لاعبين'][i], { on: count === i + 2 });
       ui.button(ctx, modeR[0], 'بالحركة', { on: mode === 'motion' }); ui.button(ctx, modeR[1], 'باللون', { on: mode === 'color' });
       ui.button(ctx, startR, 'ابدأ السباق', { primary: true }); ui.draw(ctx); return;
     }

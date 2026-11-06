@@ -41,7 +41,7 @@ defineGame({
       api.hud.set({ score: 'نجوم ' + got + '/' + STARS.length });
       if (got >= STARS.length) { state = 'done'; ui.flash(ui.theme.ok); api.end({ score: Math.round(left * 10), text: 'جمعت كل النجوم! الوقت المتبقي ' + Math.ceil(left) + ' ثانية' }); return; }
     }
-    for (const h of HOLES) if (hit(h, R + 6)) { reset(); left -= 2; ui.pop('−٢ ث', h[0] * W, h[1] * H - 30, ui.theme.bad); ui.flash(ui.theme.bad); api.audio.beep(180, 160); api.haptic(60); }
+    for (const h of HOLES) if (hit(h, R + 6)) { reset(); left -= 2; ui.pop('−2 ث', h[0] * W, h[1] * H - 30, ui.theme.bad); ui.flash(ui.theme.bad); api.audio.beep(180, 160); api.haptic(60); }
     api.hud.set({ time: String(Math.max(0, Math.ceil(left))) });
     if (left <= 0) { state = 'done'; api.end({ score: got * 100, text: 'انتهى الوقت — جمعت ' + got + ' من ' + STARS.length }); }
   },

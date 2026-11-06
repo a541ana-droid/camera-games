@@ -4,6 +4,7 @@
 (() => {
   'use strict';
   const G = self, SPEC = G.__SPEC; try { delete G.__SPEC; } catch (e) { /* */ }
+  const MASC = G.CGMascot || null; try { delete G.CGMascot; } catch (e) { /* */ } // رسم الشخصيات (mascot.js يحقنه المضيف قبل هذا الملف)؛ يصل اللعبة عبر ui.mascot فقط
   const apply = Reflect.apply, now = performance.now.bind(performance), rawPost = G.postMessage.bind(G), portPost = MessagePort.prototype.postMessage;
   const addL = G.addEventListener.bind(G), rmL = G.removeEventListener.bind(G), loadScript = G.importScripts.bind(G);
   const MAXE = SPEC.maxe, NAMES = SPEC.cmds.map(c => c[0]), OP = {}; NAMES.forEach((k, i) => { OP[k] = i; });
@@ -147,14 +148,16 @@
     const TH = Object.freeze({
       bg: '#0f0d1a', bg2: '#171429', surface: '#1f1b36', surfaceHi: '#2a2547', line: 'rgba(255,255,255,0.1)', fg: '#f4f1ff', mut: '#a9a3c4', brand: '#7c6cff', ok: '#3ddc97', warn: '#ffc145', bad: '#ff5d73',
       accent: acc, onAccent: lum(ar, ag, ab) > 0.179 ? '#0f0d1a' : '#ffffff', font: 'sans-serif',
+      mascots: Object.freeze((MASC ? MASC.info : []).map(m => Object.freeze({ name: m.name, color: m.color }))),
+      teams: Object.freeze([Object.freeze({ name: 'الفريق أ', color: '#ff8a3d' }), Object.freeze({ name: 'الفريق ب', color: '#a37bff' })]),
       players: Object.freeze([['#4da3ff', 'circle', 'أزرق'], ['#ff6b8b', 'triangle', 'وردي'], ['#ffc145', 'square', 'أصفر'], ['#3ddc97', 'diamond', 'أخضر']].map(p => Object.freeze({ color: p[0], shape: p[1], name: p[2] })))
     });
     const OUT = 'rgba(15,13,26,0.75)', GLOW0 = 'rgba(' + ar + ',' + ag + ',' + ab + ',0.24)', GLOW1 = 'rgba(' + ar + ',' + ag + ',' + ab + ',0)', STEP = 0.7, GO = 0.6, POPN = 12, POPT = 0.95, PCOL = TH.players.map(p => p.color), EMPTY = {};
     const fonts = {}, F = (px, bold) => { px = Math.max(8, Math.round(px)); const k = bold ? px + 1000 : px; return fonts[k] || (fonts[k] = (bold ? 'bold ' : '') + px + 'px sans-serif'); };
     const cl01 = v => (v > 0 ? (v < 1 ? v : 1) : 0), clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
-    const AD = '٠١٢٣٤٥٦٧٨٩', ncache = [];
+    const AD = '0123456789', ncache = [];
     const anum = v => {
-      v = Math.round(+v); if (!isFinite(v)) return '٠'; v = clamp(v, -1e15, 1e15); const small = v >= 0 && v < 1000; if (small && ncache[v]) return ncache[v];
+      v = Math.round(+v); if (!isFinite(v)) return '0'; v = clamp(v, -1e15, 1e15); const small = v >= 0 && v < 1000; if (small && ncache[v]) return ncache[v];
       const s = String(Math.abs(v)); let o = v < 0 ? '‎−' : ''; for (let i = 0; i < s.length; i++) o += AD[s.charCodeAt(i) - 48]; if (small) ncache[v] = o; return o;
     };
     const un = () => Math.min(W, H) / 100, bigPx = () => Math.min(H * 0.08, W * 0.14);
@@ -251,6 +254,7 @@
         c.save(); c.globalAlpha = 0.22; c.fillStyle = TH.fg; c.fillRect(0, y, W, h); c.globalAlpha = 1;
         if (fw > 0) { c.fillStyle = o.color || TH.accent; c.fillRect(W - fw, y, fw, h); } c.restore();
       },
+      mascot(c, i, x, y, size, o) { if (!MASC) return; c.save(); MASC.draw(c, i, x, y, size, still ? Object.assign({}, o, { still: true }) : o, tAnim); c.restore(); }, // الشخصيات الأربع (DESIGN.md §8): i 0..3، size الارتفاع بالبكسل، {mood:'happy|wow|sad|cheer', look:{x,y}}
       shape(c, i, x, y, r) { c.save(); i = pidx(i); shapePath(c, i, x, y, r); c.fillStyle = PCOL[i]; c.fill(); c.restore(); },
       playerChip(c, i, x, y, o) { // حبّة لاعب: شكله ولونه الثابتان + اسم + نقاط؛ active تبرز حبّة من يلعب الآن
         o = o || EMPTY; i = pidx(i); const h = o.size || Math.max(40, un() * 9.5), px = h * 0.42, label = o.label == null ? anum(i + 1) : String(o.label), sc = o.score == null ? '' : (typeof o.score === 'number' ? anum(o.score) : String(o.score));
@@ -279,7 +283,7 @@
         c.restore();
       },
       countdown(n, onDone) { cdLeft = clamp(Math.round(+n) || 3, 1, 9); cdT = 0; cdState = 1; cdDone = typeof onDone === 'function' ? onDone : null; snd(520, 90, 0.2, 'triangle'); },
-      pop(v, x, y, color) { // نقاط تطفو؛ v رقم (+١ / −١ بلونَي النجاح والخطأ) أو نص
+      pop(v, x, y, color) { // نقاط تطفو؛ v رقم (+1 / −1 بلونَي النجاح والخطأ) أو نص
         const i = popI; popI = (popI + 1) % POPN; const isN = typeof v === 'number';
         pTxt[i] = isN ? (v >= 0 ? '+' : '') + anum(v) : String(v).slice(0, 30); pLtr[i] = isN; pX[i] = x; pY[i] = y; pAge[i] = 0; pCol[i] = color || (isN && v < 0 ? TH.bad : TH.ok);
       },
@@ -315,6 +319,41 @@
     });
     return Object.freeze(ui);
   }
+  // ---------- الأذرع (players.pads): قائمة ومدخلات أرقام فقط يمرّرها المضيف؛ لا شبكة هنا (ENGINE.md §3.4) ----------
+  const TEAMS = { mode: (SPEC.teams && SPEC.teams.mode) || 'free', of: [] };
+  if (SPEC.teams && Array.isArray(SPEC.teams.of)) for (const [i, t] of SPEC.teams.of) TEAMS.of[i] = t;
+  let padList = [], padJoin = null, padLeave = null; const padIn = [], padPrev = [];
+  const freezePad = p => Object.freeze({ index: p.index | 0, name: String(p.name || '').slice(0, 16), character: ((p.character | 0) % 4 + 4) % 4, color: String(p.color || '#7c6cff').slice(0, 9), team: p.team === 0 || p.team === 1 ? p.team : -1, connected: !!p.connected });
+  function setPads(list, fire) {
+    const old = new Map(padList.map(p => [p.index, p])); padList = Object.freeze((Array.isArray(list) ? list.slice(0, 8) : []).map(freezePad).sort((a, b) => a.index - b.index));
+    for (const p of padList) { if (TEAMS.mode !== 'free') TEAMS.of[p.index] = p.team; if (!padIn[p.index]) padIn[p.index] = { x: 0, y: 0, a: false, b: false, aDown: false, bDown: false, aTaps: 0, bTaps: 0, tx: 0, ty: 0, connected: p.connected }; padIn[p.index].connected = p.connected; }
+    if (!fire) return;
+    for (const p of padList) { const o = old.get(p.index); if (p.connected && (!o || !o.connected) && padJoin) guard(() => padJoin(p)); if (!p.connected && o && o.connected && padLeave) guard(() => padLeave(p)); }
+  }
+  setPads(SPEC.pads, false);
+  function padInputs(a) { // [index,x,y,a,b,aCount,bCount,tx,ty]*n ؛ ضغطات الحافة تُحسب هنا من العدّادات فلا تضيع ضغطة أقصر من إطار
+    for (const s of padIn) if (s) { s.aDown = s.bDown = false; s.aTaps = s.bTaps = 0; }
+    for (let k = 0; k + 8 < a.length; k += 9) {
+      const i = a[k] | 0; if (i < 0 || i > 7) continue; const s = padIn[i] || (padIn[i] = { x: 0, y: 0, a: false, b: false, aDown: false, bDown: false, aTaps: 0, bTaps: 0, tx: 0, ty: 0, connected: true }), pv = padPrev[i] || (padPrev[i] = [0, 0]); // المضيف يبدأ عدّادَي كل مقعد من 0 مع كل لعبة، فأول إطار يحسب ما ضُغط قبله
+      s.x = num(a[k + 1], 0); s.y = num(a[k + 2], 0); s.a = !!a[k + 3]; s.b = !!a[k + 4]; s.tx = num(a[k + 7], 0); s.ty = num(a[k + 8], 0);
+      const ac = a[k + 5] | 0, bc = a[k + 6] | 0; s.aTaps = Math.max(0, Math.min(20, ac - pv[0])); s.bTaps = Math.max(0, Math.min(20, bc - pv[1])); s.aDown = s.aTaps > 0; s.bDown = s.bTaps > 0; pv[0] = ac; pv[1] = bc;
+    }
+  }
+  const NOPAD = Object.freeze({ x: 0, y: 0, a: false, b: false, aDown: false, bDown: false, aTaps: 0, bTaps: 0, tx: 0, ty: 0, connected: false });
+  function padApi() {
+    const P = 'players.pads', ix = i => { i = Math.round(num(i, -1)); return i < -1 || i > 7 ? -1 : i; };
+    return Object.freeze({
+      get list() { need(P, 'api.pads.list'); return padList; },
+      get count() { need(P, 'api.pads.count'); let n = 0; for (const p of padList) if (p.connected) n++; return n; },
+      get mode() { return TEAMS.mode; },
+      input(i) { need(P, 'api.pads.input'); return padIn[i | 0] || NOPAD; },
+      onJoin(cb) { need(P, 'api.pads.onJoin'); padJoin = typeof cb === 'function' ? cb : null; },
+      onLeave(cb) { need(P, 'api.pads.onLeave'); padLeave = typeof cb === 'function' ? cb : null; },
+      say(i, text) { need(P, 'api.pads.say'); send({ t: 'pads.say', i: ix(i), text: String(text == null ? '' : text).slice(0, 60) }); },
+      vibrate(i, ms) { need(P, 'api.pads.vibrate'); send({ t: 'pads.vib', i: ix(i), ms: num(ms, 40) }); },
+      controls(o, i) { need(P, 'api.pads.controls'); o = o || {}; send({ t: 'pads.ctl', i: i == null ? -1 : ix(i), stick: o.stick !== false, a: String(o.a == null ? '' : o.a).slice(0, 12), b: String(o.b == null ? '' : o.b).slice(0, 12), tilt: !!o.tilt }); }
+    });
+  }
   function buildApi() {
     const ask =(t, extra) => new Promise(res => { const id = 'q' + (++seq); pend.set(id, res); send(Object.assign({ t, id }, extra)); });
     return {
@@ -343,12 +382,14 @@
         if (ch) send(out); } },
       haptic(ms) { need('haptic', 'api.haptic'); send({ t: 'haptic', ms: num(ms, 30) }); },
       players: {
-        local(o) { need('players.local', 'api.players.local'); const names = (SPEC.players || (o && o.names) || ['١', '٢']).slice(0, 8).map(String); // داخل سلسلة: أسماء السلسلة هي الحاكمة
+        local(o) { need('players.local', 'api.players.local'); const names = (SPEC.players || (o && o.names) || ['1', '2']).slice(0, 8).map(String); // داخل سلسلة: أسماء السلسلة هي الحاكمة
           return { names, index: 0, scores: names.map(() => 0), get current() { return this.names[this.index]; }, next() { this.index = (this.index + 1) % this.names.length; return this.current; }, add(k) { this.scores[this.index] += k; } }; },
         network: planned('api.players.network')
       },
+      pads: padApi(),
+      teams: Object.freeze({ mode: TEAMS.mode, on: TEAMS.mode !== 'free', names: ['الفريق أ', 'الفريق ب'], colors: ['#ff8a3d', '#a37bff'], of: i => { const v = TEAMS.of[i | 0]; return v === 0 || v === 1 ? v : -1; } }),
       qr: { show: planned('api.qr.show') }, hand: { start: planned('api.hand') }, pose: { start: planned('api.pose') },
-      end(o) { o = o || {}; const arr = a => Array.isArray(a) ? a.slice(0, 8).map(x => num(x, 0)) : undefined; send({ t: 'end', scores: arr(o.scores), ranks: arr(o.ranks), score: num(o.score, 0), text: o.text == null ? '' : String(o.text).slice(0, SPEC.endmax || 300) }); }
+      end(o) { o = o || {}; const arr = a => Array.isArray(a) ? a.slice(0, 8).map(x => num(x, 0)) : undefined; send({ t: 'end', scores: arr(o.scores), ranks: arr(o.ranks), teamScores: Array.isArray(o.teamScores) ? o.teamScores.slice(0, 2).map(x => num(x, 0)) : undefined, score: num(o.score, 0), text: o.text == null ? '' : String(o.text).slice(0, SPEC.endmax || 300) }); }
     };
   }
   const guard = f => { try { f(); } catch (x) { fatal(x); } };
@@ -363,6 +404,7 @@
     if (m.w > 0 && (m.w !== W || m.h !== H)) { W = m.w; H = m.h; ctx.canvas.width = W; ctx.canvas.height = H; if (game.onResize && last >= 0) guard(() => game.onResize(W, H)); }
     const dt = last < 0 ? 0 : Math.min(.1, Math.max(0, (m.ts - last) / 1000)); last = m.ts; T += dt;
     const a = now(); beginFrame();
+    if (Array.isArray(m.pi)) padInputs(m.pi);
     guard(() => { if (m.p) pointers(m.p); if (uiStep) uiStep(dt); if (game.update) game.update(dt, T); if (game.render && !dead) game.render(ctx, W, H); });
     const ms = now() - a; let mem = 0; if (MEM.over || a - memAt > 500) { memAt = a; mem = Math.max(MEM.over, MEM.live, performance.memory ? performance.memory.usedJSHeapSize : 0); }
     send({ t: 'frame', b: buf.slice(0, n), ms, ov: over ? 1 : 0, mem });
@@ -377,6 +419,7 @@
       const m = ev.data; if (!m || dead) return;
       if (m.t === 'tick') tick(m);
       else if (m.t === 'track') { const k = tracks.get(m.id); if (k) { const dd = k.wrap ? k.wrap(m.d) : m.d; k.h.last = dd; if (k.cb) guard(() => k.cb(dd)); } }
+      else if (m.t === 'pads') setPads(m.list, true);
       else if (m.t === 'err2') fatal(new EngineError(String(m.msg)));
       else if (m.t === 'mic') { if (micCb) guard(() => micCb(m.d)); }
       else if (m.t === 'lowres') { if (lowCb) guard(() => lowCb(m.d)); }

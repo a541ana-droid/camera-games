@@ -23,7 +23,7 @@ try {
     await sleep(4000); const shot = await c.send('Page.captureScreenshot', { format: 'jpeg', quality: 70 }); writeFileSync(SHOTS + '/race-' + label + '.jpg', Buffer.from(shot.result.data, 'base64'));
     let end = null; for (let i = 0; i < 80 && !end; i++) { await sleep(500); end = await c.ev(`(__engine.events.find(e=>e.n==='end')||{}).d||null`); }
     const state = await c.ev(`(()=>{const s=__engine.state(); return s? {mode:s.mode, frames:s.frames}:null})()`);
-    ok(label + ' winner', end && end.text.includes('اللاعب ' + ['١', '٢', '٣', '٤'][winner]), { end, state });
+    ok(label + ' winner', end && end.text.includes('اللاعب ' + ['1', '2', '3', '4'][winner]), { end, state });
     await c.ev(`__engine.stopGame('exit')`); await sleep(300);
   }
   console.log(JSON.stringify({ pageErrors: c.log.filter(l => l.startsWith('exception')) }));

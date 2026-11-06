@@ -36,7 +36,7 @@ try {
   const ui = await c.ev(`({games:[...document.querySelectorAll('#ser .card')].map(b=>b.textContent), inputs:document.querySelectorAll('#ser input').length, minBtn:Math.min(...[...document.querySelectorAll('#ser button')].map(b=>b.getBoundingClientRect().height)), rtl:getComputedStyle(document.getElementById('ser')).direction})`);
   ok('setup lists suitable games (test-loop game excluded), RTL, touch targets ≥48px', ui.games.length >= 3 && !ui.games.some(t => t.includes('حلقة')) && ui.rtl === 'rtl' && ui.minBtn >= 48, ui);
   await shot('setup');
-  await clickTxt('٣'); await sleep(200); // مبدئيًا أول «٣» في شريط اللاعبين
+  await clickTxt('3'); await sleep(200); // مبدئيًا أول «3» في شريط اللاعبين
   ok('choosing 3 players shows 3 name inputs', (await c.ev(`document.querySelectorAll('#ser input').length`)) === 3, null);
   // اترك لعبة واحدة فقط (الأولى): ألغِ الباقي
   const n0 = ui.games.length; for (let i = 1; i < n0; i++) { await c.ev(`document.querySelectorAll('#ser .card')[${i}].click()`); await sleep(60); }

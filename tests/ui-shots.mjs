@@ -10,7 +10,7 @@ const GAME = `// @title صيد الألوان
 // @accent #ffc145
 // @engine 0.2
 // @capabilities camera.color hud
-defineGame({ init(api) { this.api = api; api.hud.set({ score: '٠٣', title: 'ابحث عن اللون الأحمر', time: '١٢' }); }, update(dt, t) { if (t > 1.2 && !this.d) { this.d = 1; this.api.end({ score: 87, text: 'أحسنت! أنهيت كل الألوان' }); } }, render(c, w, h) { c.fillStyle = '#d33'; c.beginPath(); c.arc(w / 2, h / 2, Math.min(w, h) / 5, 0, 7); c.fill(); } });`;
+defineGame({ init(api) { this.api = api; api.hud.set({ score: '03', title: 'ابحث عن اللون الأحمر', time: '12' }); }, update(dt, t) { if (t > 1.2 && !this.d) { this.d = 1; this.api.end({ score: 87, text: 'أحسنت! أنهيت كل الألوان' }); } }, render(c, w, h) { c.fillStyle = '#d33'; c.beginPath(); c.arc(w / 2, h / 2, Math.min(w, h) / 5, 0, 7); c.fill(); } });`;
 for (const scheme of ['dark', 'light']) for (const [w, h, nm] of sizes) {
   const tag = `${nm}-${scheme}`; if (only && !tag.includes(only)) continue;
   await c.send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: w < 500 });

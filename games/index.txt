@@ -3,5 +3,13 @@ freeze.js
 mole-air.js
 multi-lane.js
 zz-loop-test.js
-balloon-shout.js
 tilt-balance.js
+balloon-bop.js
+simon-zones.js
+goalie.js
+lane-dodger.js
+bubble-mirror.js
+tilt-maze.js
+pad-stars.js
+pad-tug.js
+pad-quick.js

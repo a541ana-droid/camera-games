@@ -10,7 +10,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-192.png">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' blob: 'sha256-kWk1SupbNVOkZQkpxg0qyy1daQSU6A19cie5HQ2d1zY='; style-src 'unsafe-inline'; img-src 'self' blob: data:; media-src 'self' blob: mediastream:; connect-src 'self'; worker-src 'self' blob:; manifest-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' blob: 'sha256-kWk1SupbNVOkZQkpxg0qyy1daQSU6A19cie5HQ2d1zY='; style-src 'unsafe-inline'; img-src 'self' blob: data:; media-src 'self' blob: mediastream:; connect-src 'self' https://abacus.jasoncameron.dev wss://nos.lol wss://nostr.mom wss://relay.damus.io wss://relay.primal.net wss://relay.nostr.dev.br wss://relay.routstr.com wss://nostr.oxtr.dev; worker-src 'self' blob:; manifest-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>محرك ألعاب الكاميرا</title>
 <style>
 :root{color-scheme:dark light;--bg:#0f0d1a;--bg2:#171429;--surface:#1f1b36;--surface-hi:#2a2547;--line:#ffffff1a;--fg:#f4f1ff;--mut:#a9a3c4;--brand:#7c6cff;--on-brand:#0f0d1a;--ok:#3ddc97;--warn:#ffc145;--bad:#ff5d73;--r-s:10px;--r-m:16px;--r-l:24px;--sp:8px;--glass:#0f0d1ad9;--shadow:0 10px 30px -12px #000a;--ease:cubic-bezier(.2,.8,.2,1);--acc:var(--brand);--font:system-ui,-apple-system,"SF Arabic","Noto Sans Arabic","Segoe UI",Tahoma,sans-serif}
@@ -44,6 +44,13 @@ select{font:inherit;color:var(--fg);background:var(--surface-hi);border:1px soli
 .acts .ico{width:56px;padding:0;font-size:22px}
 #inst{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:color-mix(in srgb,var(--brand) 14%,var(--surface));border:1px solid color-mix(in srgb,var(--brand) 45%,transparent);border-radius:var(--r-l);padding:14px 18px;margin:0 0 20px;animation:rise .24s var(--ease) both}#inst[hidden],#inst button[hidden]{display:none}#inst .ii{font-size:30px}#inst .it{flex:1 1 220px;display:grid;gap:2px}#inst .it b{font-size:17px}#inst .it small{color:var(--mut);font-size:14px;line-height:1.6}#inst .ia{display:flex;gap:8px}#inst button{min-height:44px;padding:0 18px}
 #settings{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-l);padding:8px 20px;margin:0 0 24px;box-shadow:var(--shadow);max-width:640px;animation:rise .24s var(--ease) both}
+#make{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-l);padding:8px 20px 16px;margin:32px 0 24px;box-shadow:var(--shadow);max-width:760px}
+#make h2,.sech{font-size:18px;margin:14px 0 4px}.sech{margin:28px 0 12px}
+.steps{margin:0;padding-inline-start:22px}.steps li{margin:14px 0}.steps b{display:block;margin-bottom:8px}
+.steps textarea{width:100%;box-sizing:border-box;font:inherit;font-size:15px;color:var(--fg);background:var(--bg2);border:1px solid var(--line);border-radius:var(--r-m);padding:10px 12px;resize:vertical}
+.steps .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+a.btn{display:inline-flex;align-items:center;min-height:48px;padding:0 18px;border-radius:var(--r-m);border:1px solid var(--line);background:var(--surface-hi);color:var(--fg);text-decoration:none;font-weight:600}
+#mine .card{position:relative}.del{position:absolute;top:8px;inset-inline-end:8px;min-height:36px;width:36px;padding:0;border-radius:50%;z-index:2}
 #settings h2{font-size:18px;margin:12px 0 4px}
 .set{display:flex;justify-content:space-between;align-items:center;gap:16px;min-height:56px;border-top:1px solid var(--line);color:var(--fg);font-size:16px}
 .set:first-of-type{border-top:0}
@@ -117,6 +124,67 @@ select{font:inherit;color:var(--fg);background:var(--surface-hi);border:1px soli
 .srow.top{border:2px solid var(--brand);background:color-mix(in srgb,var(--brand) 12%,var(--surface))}
 .srow small{color:var(--mut);display:block;font-size:13px;font-weight:400}.pls{color:var(--ok);font-weight:800}
 #dbg{position:fixed;left:6px;bottom:2px;font:11px monospace;color:#8f8;direction:ltr;pointer-events:none}
+/* التلفاز: الردهة والنتيجة (tv.js) */
+#tvHint{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:color-mix(in srgb,#ff8a3d 14%,var(--surface));border:1px solid color-mix(in srgb,#ff8a3d 45%,transparent);border-radius:var(--r-l);padding:14px 18px;margin:0 0 20px}#tvHint .ii{font-size:30px}#tvHint .it{flex:1 1 220px;display:grid;gap:2px}#tvHint .it b{font-size:17px}#tvHint .it small{color:var(--mut);font-size:14px}
+@media (pointer:fine){#joinBtn{display:none}}
+#tv{padding:max(20px,env(safe-area-inset-top)) 28px 24px}
+.tvw{display:grid;grid-template-columns:minmax(360px,34%) 1fr;grid-template-rows:auto 1fr;gap:20px 28px;max-width:1800px;margin:0 auto;min-height:calc(100vh - 48px)}
+.tvtop{grid-column:1/-1;display:flex;align-items:center;gap:16px}.tvtop h1{margin:0;flex:1}.tvtop .ico{width:56px;padding:0;font-size:24px}
+.tvnet{color:var(--mut);font-size:15px;background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:6px 16px}.tvnet::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--ok);margin-inline-end:8px}.tvnet.bad::before{background:var(--bad)}
+.tvjoin{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-l);padding:28px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;box-shadow:var(--shadow);text-align:center}
+.qr{width:min(100%,440px);aspect-ratio:1;height:auto;border-radius:20px;background:#fff;box-shadow:0 0 0 10px #fff}
+.tvhow{font-size:22px;font-weight:700;margin-top:10px}
+.tvcode{display:flex;gap:12px}.tvcode b{display:grid;place-items:center;width:84px;height:100px;border-radius:18px;background:var(--bg2);border:2px solid color-mix(in srgb,var(--brand) 60%,transparent);font-size:60px;font-weight:800;letter-spacing:0;font-family:ui-rounded,system-ui,sans-serif}
+.tvurl{color:var(--mut);font-size:15px;line-height:1.7}
+.tvside{display:flex;flex-direction:column;gap:10px;min-width:0}.tvside h2{font-size:18px;color:var(--mut);margin:6px 0 0;font-weight:700}
+.tvplayers{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.pcard{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:178px;padding:10px 8px 12px;background:var(--surface);border:2px solid color-mix(in srgb,var(--pc,var(--line)) 70%,transparent);border-radius:var(--r-l);color:var(--fg);font:inherit;box-shadow:0 10px 26px -16px var(--pc,#000);position:relative}
+.pcard b{font-size:19px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pcard small{color:var(--mut);font-size:14px}
+.pcard .mc{width:110px;height:110px}.pcard.off{opacity:.55}.pcard.empty{border-style:dashed;border-color:var(--line);box-shadow:none;color:var(--mut)}.pcard.empty b{font-size:16px;font-weight:600;color:var(--mut)}
+.slot{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;border:2px dashed var(--line);font-size:24px;margin-bottom:8px}
+.team{display:inline-block;border-radius:99px;padding:2px 14px;font-size:14px;font-weight:700;color:#1a1430}.team.t0{background:#ff8a3d}.team.t1{background:#a37bff}.pcard .team{position:absolute;top:10px;inset-inline-start:10px}
+.tvmodes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.tvmodes .chip{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70px;padding:6px 10px;line-height:1.3}.tvmodes .chip b{font-size:18px}.tvmodes .chip small{font-size:13px;font-weight:400;color:var(--mut)}.tvmodes .chip.on small{color:inherit;opacity:.8}
+.tvgames{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.gcard{position:relative;display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-start;text-align:start;min-height:120px;padding:14px 16px;border-radius:var(--r-l);border:2px solid transparent;overflow:hidden;color:#fff;background:linear-gradient(150deg,color-mix(in srgb,var(--ac) 85%,#fff) 0%,var(--ac) 45%,color-mix(in srgb,var(--ac) 45%,#000) 100%);font:inherit}
+.gcard .gpic{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.9}.gcard b,.gcard small{position:relative;text-shadow:0 2px 8px #0009}.gcard b{font-size:20px}.gcard small{font-size:13px;font-weight:400;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.gcard.on{border-color:#fff;box-shadow:0 0 0 4px var(--ac),0 16px 30px -14px var(--ac)}.gcard:not(.on){filter:saturate(.75)}
+.tvgo{display:flex;align-items:center;gap:18px;margin-top:6px}.tvgo .pri{min-width:240px;min-height:64px;font-size:21px}#tvWhy{color:var(--mut);font-size:16px}
+.tvwarn{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:5;max-width:min(90vw,720px)}
+.tvres{max-width:1500px;margin:0 auto;text-align:center;display:flex;flex-direction:column;align-items:center;gap:12px;padding-top:2vh}.tvres h1{font-size:clamp(32px,5vw,64px);margin:8px 0 0}.rtext{color:var(--mut);font-size:18px;margin:0;max-width:60ch;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere}
+.rrow{display:flex;flex-wrap:wrap;justify-content:center;gap:16px}.rcard{display:flex;flex-direction:column;align-items:center;min-width:170px;padding:12px 16px 16px;background:var(--surface);border:2px solid var(--line);border-radius:var(--r-l)}.rcard.win{border-color:var(--pc);box-shadow:0 0 0 4px color-mix(in srgb,var(--pc) 35%,transparent),0 18px 36px -16px var(--pc)}
+.rcard .mc{width:140px;height:140px}.rcard b{font-size:20px}.rs{font-size:34px;font-weight:800;font-variant-numeric:tabular-nums}.rcard small{color:var(--mut)}
+.rteams{display:grid;grid-template-columns:1fr 1fr;gap:24px;width:100%}.rteam{background:var(--surface);border:2px solid var(--line);border-radius:var(--r-l);padding:12px 16px 18px}.rteam.t0{border-color:#ff8a3d66}.rteam.t1{border-color:#a37bff66}.rteam.win.t0{border-color:#ff8a3d;box-shadow:0 0 0 5px #ff8a3d44}.rteam.win.t1{border-color:#a37bff;box-shadow:0 0 0 5px #a37bff44}
+.rteam h2{margin:4px 0 0;font-size:26px}.rteam.t0 h2{color:#ff8a3d}.rteam.t1 h2{color:#a37bff}.rbig{font-size:64px;font-weight:800;line-height:1.1}.rteam .rcard{min-width:150px;background:var(--bg2)}.rteam .rcard .mc{width:110px;height:110px}
+.tvres .row{justify-content:center}.tvres .row button{min-width:220px;min-height:64px;font-size:20px}
+@media (max-width:980px){.tvw{grid-template-columns:1fr}.tvplayers{grid-template-columns:repeat(2,minmax(0,1fr))}.tvmodes{grid-template-columns:repeat(2,minmax(0,1fr))}.qr{width:min(100%,320px)}.tvcode b{width:64px;height:76px;font-size:44px}.rteams{grid-template-columns:1fr}}
+/* الجوال ذراعًا (pad.js): أهداف كبيرة لطفل في الخامسة */
+#pad{padding:max(14px,env(safe-area-inset-top)) 16px max(16px,env(safe-area-inset-bottom));-webkit-user-select:none;user-select:none;touch-action:manipulation}
+.pbox{max-width:520px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center}
+.pbox h1{font-size:28px;margin:0;line-height:1.35}.pbox p{margin:0}.pbox>button{width:100%}
+.ppick{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%}
+.pch{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:156px;padding:6px;border-radius:var(--r-l);border:3px solid transparent;background:var(--surface);font:inherit;color:var(--fg)}.pch .mc{width:112px;height:112px}.pch b{font-size:20px}
+.pch.on{border-color:var(--pc);background:color-mix(in srgb,var(--pc) 22%,var(--surface));box-shadow:0 12px 28px -14px var(--pc)}
+.pname,.pcode{width:100%;font:inherit;font-size:22px;text-align:center;color:var(--fg);background:var(--surface);border:2px solid var(--line);border-radius:var(--r-m);min-height:64px;padding:0 14px}
+.pcode{font-size:48px;font-weight:800;letter-spacing:.3em;min-height:88px;text-transform:uppercase}
+.pstart,.pbig{min-height:84px!important;font-size:30px!important;border-radius:24px!important}
+.pmsg{color:var(--warn);font-size:17px;min-height:1.6em}.pmut{color:var(--mut);font-size:17px}.pwait{font-size:22px;font-weight:700}.plead{font-size:19px;font-weight:700;color:var(--warn)}.pfoot{color:var(--mut)}
+.pbigm{width:220px;height:220px}
+.pdots{display:flex;gap:10px}.pdots i{width:14px;height:14px;border-radius:50%;background:var(--brand);animation:pd 1s infinite alternate}.pdots i:nth-child(2){animation-delay:.2s}.pdots i:nth-child(3){animation-delay:.4s}@keyframes pd{to{opacity:.2;transform:scale(.6)}}
+.plist{display:grid;gap:10px;width:100%}.plist .card{margin:0;min-height:64px;font-size:20px;font-weight:700;text-align:center}.plist .card.on{border-color:var(--brand);background:color-mix(in srgb,var(--brand) 22%,var(--surface))}
+.pmodes{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}.pmodes .chip{min-height:60px;font-size:18px}
+.pctl{position:fixed;inset:0;display:flex;flex-direction:column;padding:max(8px,env(safe-area-inset-top)) 10px max(10px,env(safe-area-inset-bottom));touch-action:none;background:var(--bg)}
+.ptop{display:flex;align-items:center;gap:10px;min-height:64px;padding:0 6px}.ptop .mc{width:60px;height:60px}.ptop b{font-size:22px;flex:1;text-align:start;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.prtt{color:var(--mut);font-size:12px;direction:ltr}
+.pplay{flex:1;display:grid;grid-template-columns:1.15fr 1fr;gap:10px;direction:ltr;min-height:0}
+.pstick{position:relative;border-radius:28px;background:var(--surface);border:2px dashed var(--line);touch-action:none;overflow:hidden}.pstick canvas{position:absolute;inset:0}.pstick.on{border-style:solid;border-color:color-mix(in srgb,var(--brand) 50%,transparent)}
+.phint{position:absolute;bottom:12px;left:0;right:0;text-align:center;color:var(--mut);font-size:15px;pointer-events:none;direction:rtl}
+.pbtns{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px}
+.pbtn{width:min(100%,42vw,200px);aspect-ratio:1;min-height:0;border-radius:50%;padding:0;font-size:26px;font-weight:800;color:#1a1430;background:var(--pc);border:0;box-shadow:0 10px 0 color-mix(in srgb,var(--pc) 55%,#000),0 18px 30px -10px var(--pc);touch-action:none;transition:transform 60ms,box-shadow 60ms}
+.pbtn.pb{width:min(80%,32vw,150px);font-size:21px;background:color-mix(in srgb,var(--pc) 55%,#fff)}
+.pbtn:hover{background:var(--pc)}.pbtn.pb:hover{background:color-mix(in srgb,var(--pc) 55%,#fff)} /* لمسة الجوال تُبقي :hover عالقًا */
+.pbtn.down,.pbtn:active{transform:translateY(8px) scale(.97);box-shadow:0 2px 0 color-mix(in srgb,var(--pc) 55%,#000),0 8px 18px -10px var(--pc)}
+.pctl.nostick .pplay{grid-template-columns:1fr}.pctl.nostick .pbtn.pa{width:min(78vw,60vh,320px);font-size:34px}
+.psay{min-height:56px;display:grid;place-items:center;font-size:20px;font-weight:700;text-align:center;color:var(--mut);padding:6px;border-radius:var(--r-m);transition:background .2s,color .2s}.psay.on{background:color-mix(in srgb,var(--warn) 22%,var(--surface));color:var(--fg)}
+@media (orientation:landscape) and (max-height:520px){.ptop{min-height:48px}.ptop .mc{width:44px;height:44px}.psay{min-height:40px;font-size:17px}.pbtns{flex-direction:row}.pbtn{width:min(40%,34vh*1.3,180px)}}
 @media (min-width:1600px){.wrap{max-width:1640px}.grid{grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:28px}#list .card b{font-size:23px}#list .card small{font-size:17px}h1{font-size:40px}.acts button.big{min-height:64px;font-size:20px}.body{padding:20px 22px 22px}#ser>*{max-width:760px}#ov .panel{width:min(100%,680px);padding:40px 36px 32px}#ovI{font-size:64px}#ovT{font-size:34px}#ovK{font-size:18px}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style>
@@ -129,6 +197,8 @@ select{font:inherit;color:var(--fg);background:var(--surface-hi);border:1px soli
       <div class="acts">
         <button class="pri big" id="playBtn">▶ العب</button>
         <button class="big" id="serBtn">🏆 دوري</button>
+        <button class="big" id="tvBtn">📺 العب بالجوالات</button>
+        <button class="big" id="joinBtn">📱 انضم</button>
         <button class="ico" id="setBtn" aria-label="الإعدادات" aria-expanded="false" aria-controls="settings">⚙️</button>
       </div>
     </header>
@@ -137,15 +207,33 @@ select{font:inherit;color:var(--fg);background:var(--surface-hi);border:1px soli
       <div class="it"><b>ثبّت الألعاب على جوالك</b><small id="instMsg">تصير أيقونة على الشاشة الرئيسية، وتعمل بلا إنترنت.</small></div>
       <div class="ia"><button class="pri" id="instGo">ثبّت</button><button id="instNo">لاحقًا</button></div>
     </section>
+    <section id="tvHint" hidden aria-label="وضع التلفاز">
+      <span class="ii" aria-hidden="true">📺</span>
+      <div class="it"><b>شاشة كبيرة؟ اجعلها شاشة العرض</b><small>يمسح كل لاعب رمزًا بجواله ويصير جواله ذراع التحكّم، والشاشة للعرض فقط.</small></div>
+      <div class="ia"><button class="pri" id="tvHintGo">العب بالجوالات</button></div>
+    </section>
     <section id="settings" hidden aria-label="الإعدادات">
       <h2>الإعدادات</h2>
       <label class="set">الكاميرا <select id="facing"><option value="user" selected>الأمامية</option><option value="environment">الخلفية</option></select></label>
       <label class="set">عرض صورة الكاميرا في الألعاب <input type="checkbox" id="camview" checked></label>
       <p class="sethint">الصورة تبقى على شاشتك ولا تُحفظ ولا تُرسل.</p>
+      <p class="set" id="statsL">زوّار الموقع <b id="stats">—</b></p>
+      <p class="sethint">عدّاد مجهول: يُحسب كل جهاز مرة في اليوم، بلا كوكيز ولا أي معلومة عنك.</p>
       <label class="set" id="synthL" hidden>مصدر اصطناعي (تجارب) <input type="checkbox" id="synth"></label>
     </section>
     <div id="list" class="grid"></div>
-    <div class="foot"><button id="pick">تحميل ملف لعبة</button><input type="file" id="file" accept=".js,text/javascript" hidden></div>
+    <h2 class="sech" id="myH" hidden>ألعابي</h2>
+    <div id="mine" class="grid"></div>
+    <section id="make" aria-labelledby="makeH">
+      <h2 id="makeH">✨ اصنع لعبتك بالذكاء الاصطناعي</h2>
+      <p class="sethint">مع أي نموذج: ChatGPT أو Gemini أو Claude أو غيره. لا حساب ولا مفتاح هنا.</p>
+      <ol class="steps">
+        <li><b>اكتب فكرتك</b><textarea id="idea" rows="3" placeholder="مثال: لعبة نطّ الحبل، كل ما قفز اللاعب أمام الكاميرا ياخذ نقطة، وتسرع مع الوقت"></textarea></li>
+        <li><b>انسخ الطلب والصقه في النموذج</b><span class="row"><button class="pri" id="mkCopy">📋 انسخ الطلب</button><a class="btn" href="https://chatgpt.com/" target="_blank" rel="noopener">ChatGPT</a><a class="btn" href="https://gemini.google.com/app" target="_blank" rel="noopener">Gemini</a><a class="btn" href="https://claude.ai/new" target="_blank" rel="noopener">Claude</a></span><small id="mkMsg" class="sethint"></small><textarea id="mkOut" rows="4" dir="ltr" readonly hidden></textarea></li>
+        <li><b>انسخ ردّه كاملًا والصقه هنا</b><textarea id="code" rows="4" dir="ltr" placeholder="// @title ..."></textarea><span class="row"><button class="pri" id="mkRun">▶ جرّب واحفظ في «ألعابي»</button><button id="pick">أو من ملف</button></span><small class="sethint">اللعبة تعمل في صندوق معزول: لا ترى ملفاتك ولا الإنترنت. إن ظهر خطأ فانسخه وأرسله للنموذج ليصلحه.</small></li>
+      </ol>
+      <input type="file" id="file" accept=".js,text/javascript" hidden>
+    </section>
   </div>
 </div>
 <div id="stage" hidden>
@@ -159,12 +247,18 @@ select{font:inherit;color:var(--fg);background:var(--surface-hi);border:1px soli
 </div>
 <div id="priv" aria-live="polite"><div id="camind" hidden></div><div id="micInd" hidden>الميكروفون يعمل — لا يُسجَّل ولا يغادر الجهاز</div></div>
 <div id="ser" class="view" hidden></div>
+<div id="tv" class="view" hidden></div>
+<div id="pad" class="view" hidden></div>
 <div id="dbg" hidden></div>
-<script src="tracker.js?v=045"></script>
-<script src="draw.js?v=045"></script>
-<script src="mic.js?v=045"></script>
-<script src="sensors.js?v=045"></script>
-<script src="engine.js?v=045"></script>
-<script src="series.js?v=045"></script>
+<script src="tracker.js?v=050"></script>
+<script src="draw.js?v=050"></script>
+<script src="mic.js?v=050"></script>
+<script src="sensors.js?v=050"></script>
+<script src="mascot.js?v=050"></script>
+<script src="net.js?v=050"></script>
+<script src="engine.js?v=050"></script>
+<script src="series.js?v=050"></script>
+<script src="tv.js?v=050"></script>
+<script src="pad.js?v=050"></script>
 </body>
 </html>

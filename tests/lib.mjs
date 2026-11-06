@@ -18,6 +18,17 @@ export async function chrome(opts = {}) {
   const ev = async expr => { const r = await send('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true }); if (r.result.exceptionDetails) throw new Error(JSON.stringify(r.result.exceptionDetails).slice(0, 400)); return r.result.result.value; };
   await send('Page.enable'); await send('Runtime.enable'); await send('Log.enable');
   const nav = async (url, wait = 1200) => { await send('Page.navigate', { url }); await sleep(wait); };
-  return { send, ev, nav, log, close() { try { ws.close(); } catch { } proc.kill(); }  };
+  // تبويب إضافي في المتصفح نفسه (لاختبارات الأذرع عبر BroadcastChannel): الواجهة نفسها {send, ev, nav, log, close}
+  const tab = async (url = 'about:blank') => {
+    const t = await (await fetch(`http://127.0.0.1:${port}/json/new?${encodeURIComponent(url)}`, { method: 'PUT' })).json();
+    const w = new WebSocket(t.webSocketDebuggerUrl); await new Promise((ok, no) => { w.onopen = ok; w.onerror = no; });
+    let j = 0; const pd = new Map(), lg = [];
+    w.onmessage = e => { const m = JSON.parse(e.data); if (m.id && pd.has(m.id)) { pd.get(m.id)(m); pd.delete(m.id); } else if (m.method === 'Runtime.exceptionThrown') lg.push('exception: ' + JSON.stringify(m.params.exceptionDetails).slice(0, 300)); else if (m.method === 'Runtime.consoleAPICalled') lg.push('console.' + m.params.type + ': ' + m.params.args.map(a => a.value ?? a.description).join(' ')); };
+    const sd = (method, params = {}) => new Promise(r => { const i = ++j; pd.set(i, r); w.send(JSON.stringify({ id: i, method, params })); });
+    const e2 = async expr => { const r = await sd('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true }); if (r.result.exceptionDetails) throw new Error(JSON.stringify(r.result.exceptionDetails).slice(0, 400)); return r.result.result.value; };
+    await sd('Page.enable'); await sd('Runtime.enable');
+    return { id: t.id, send: sd, ev: e2, log: lg, nav: async (u, wait = 1200) => { await sd('Page.navigate', { url: u }); await sleep(wait); }, async close() { try { await fetch(`http://127.0.0.1:${port}/json/close/${t.id}`); } catch { } try { w.close(); } catch { } } };
+  };
+  return { send, ev, nav, log, tab, port, close() { try { ws.close(); } catch { } proc.kill(); }  };
 }
 export const exfilCount = async () => (await (await fetch(BASE + '/__exfil')).json()).n;

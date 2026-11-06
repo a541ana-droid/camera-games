@@ -48,15 +48,15 @@ try {
   ok('ENGINE.md embeds the tested example verbatim (and the §7 template uses api.ui)', readFileSync(new URL('../ENGINE.md', import.meta.url), 'utf8').includes(ex) && /## 7\.[\s\S]*ui = a\.ui[\s\S]*ui\.countdown[\s\S]*ui\.draw\(ctx\)[\s\S]*## 8\./.test(readFileSync(new URL('../ENGINE.md', import.meta.url), 'utf8')), null);
   await open('tests/games/kit-example.js', 1500); const cv = await c.ev(`(()=>{const r=document.getElementById('cv').getBoundingClientRect(); return [r.left, r.top, r.width, r.height]})()`);
   await tap(215, 400); await sleep(3200); for (let i = 0; i < 4; i++) await tap(cv[0] + cv[2] / 2, cv[1] + cv[3] * 0.62 + 45);
-  const sc = await c.ev(`document.getElementById('hScore').textContent`); ok('ENGINE.md example: title → countdown → play → taps score (HUD shows Arabic-Indic digits)', /^[٠-٩]+$/.test(sc) && sc !== '٠', sc);
+  const sc = await c.ev(`document.getElementById('hScore').textContent`); ok('ENGINE.md example: title → countdown → play → taps score (HUD shows Western 0-9 digits)', /^[0-9]+$/.test(sc) && sc !== '0', sc);
   await c.ev(`__engine.stopGame('exit')`);
   // (5) الألعاب الست تحمّل الكاميرا/الحسّاس الاصطناعي وتبدأ وتعرض واجهة العُدّة بلا أخطاء
   await c.nav(BASE + '/index.html?debug=1&sensors=1'); await c.ev(`document.getElementById('synth').checked=true`);
-  for (const g of ['color-hunt', 'freeze', 'mole-air', 'multi-lane', 'tilt-balance', 'balloon-shout']) {
+  for (const g of ['color-hunt', 'freeze', 'mole-air', 'multi-lane', 'tilt-balance']) {
     await open('games/' + g + '.js', 1500); const a = await c.ev(`(()=>{const s=__engine.state(); return s?{ready:s.ready,viol:s.viol,frames:s.frames,cmdN:s.cmdN}:null})()`);
     await tap(215, 400); await sleep(700); const b = await c.ev(`(()=>{const s=__engine.state(); return s?{viol:s.viol,cmdN:s.cmdN,err:document.getElementById('ovT').textContent.slice(0,60)}:null})()`);
     ok(g + ': intro and start render with the kit, no violations', a && a.ready && a.viol === 0 && a.cmdN > 20 && b && b.viol === 0 && b.cmdN > 5, { a, b }); }
-  ok('games use the kit instead of ad-hoc screens', ['color-hunt', 'freeze', 'mole-air', 'multi-lane', 'tilt-balance', 'balloon-shout'].every(g => /api\.ui\b|ui = a\.ui/.test(readFileSync(new URL('../games/' + g + '.js', import.meta.url), 'utf8'))), null);
+  ok('games use the kit instead of ad-hoc screens', ['color-hunt', 'freeze', 'mole-air', 'multi-lane', 'tilt-balance'].every(g => /api\.ui\b|ui = a\.ui/.test(readFileSync(new URL('../games/' + g + '.js', import.meta.url), 'utf8'))), null);
   // (6) سباق الحارات يُبلغ بنتيجة كل لاعب: داخل سلسلة من ٣ لاعبين تُحتسب النقاط (الفائز = لاعب الحارة الثالثة)
   await c.nav(BASE + '/index.html?debug=1'); await c.ev(`document.getElementById('synth').checked=true`);
   await c.ev(`DebugSynth.state.blobs=[{c:'#e5484d',x:.17,y:.5,r:.06},{c:'#4cc38a',x:.5,y:.5,r:.06},{c:'#3b82f6',x:.83,y:.5,r:.13,ax:.12,ay:.05,hz:3}]; Series.start({names:['أ','ب','ج'],games:['games/multi-lane.js'],rounds:1})`); await sleep(500);
