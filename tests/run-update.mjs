@@ -1,6 +1,6 @@
-// شريط «نسخة جديدة جاهزة — تحديث» (0.5.2) بعامل خدمة حقيقي: خادم صغير خاص بهذا الاختبار يخدم المستودع، ويغيّر sw.js عند الطلب (= نشر نسخة جديدة).
-// يتحقق: أول تثبيت بلا شريط · النسخة الجديدة تنتظر ولا تتولّى وحدها · الشريط في القائمة فقط (لا أثناء لعبة ولا في ردهة التلفاز) · لا إعادة تحميل تلقائية أبدًا
-// · «لاحقًا» يخفيه · «تحديث» يفعّل النسخة الجديدة ويعيد التحميل مرة واحدة ثم يختفي الشريط.
+// التحديث التلقائي (0.5.3) بعامل خدمة حقيقي: خادم صغير خاص بهذا الاختبار يخدم المستودع، ويغيّر sw.js عند الطلب (= نشر نسخة جديدة).
+// يتحقق: أول تثبيت بلا إعادة تحميل · النسخة الجديدة تتولّى فورًا ولا تنتظر · لا إعادة تحميل أثناء لعبة ولا في ردهة التلفاز
+// · إعادة تحميل تلقائية مرة واحدة عند العودة إلى القائمة أو حالًا إن كانت مفتوحة · صفحات نسخ ما قبل 0.5.2 (مخزن cam-games-0.5.1) تُعاد فتحًا.
 // الاستعمال: node tests/run-update.mjs   (لا يحتاج tests/server.mjs؛ يفتح المنفذ UPD_PORT أو 8497)
 import { createServer } from 'node:http';
 import { readFileSync, existsSync, statSync } from 'node:fs';
@@ -23,39 +23,38 @@ const swBuild = () => c.ev(`fetch('sw.js?probe=' + Date.now()).then(()=>navigato
 try {
   await c.nav(BASE + '/index.html?debug=1', 1500);
   ok('first visit: the service worker installs and takes control at once', await until(`!!navigator.serviceWorker.controller`), await swBuild());
-  await sleep(500); ok('first install shows no update bar', !(await bar()));
-  await c.ev(`window.__mark = 1`);
+  await c.ev(`window.__mark = 1`); await sleep(800);
+  ok('first install: no reload, no update bar', (await c.ev(`window.__mark === 1`)) && !(await bar()));
 
-  // نسخة جديدة تصل أثناء لعبة: لا شريط ولا إعادة تحميل
+  // نسخة جديدة تصل أثناء لعبة: تتولّى فورًا، ولا إعادة تحميل حتى نعود إلى القائمة
   await c.ev(`document.getElementById('synth').checked = true; __engine.startGame('games/tilt-maze.js')`); await until(`!!(__engine.state() && __engine.state().ready)`, 10000);
-  build = 2; await c.ev(`navigator.serviceWorker.getRegistration().then(r => r.update())`);
-  ok('new version installs and WAITS (does not take over the open page by itself)', await until(`navigator.serviceWorker.getRegistration().then(r => !!r.waiting)`), await swBuild());
+  build = 2; await c.ev(`navigator.serviceWorker.getRegistration().then(r => r.update())`); await sleep(2500);
+  const mid = await swBuild();
+  ok('new version takes over at once (nothing left waiting)', !mid.waiting && mid.active, mid);
+  ok('during a game: no reload, game keeps running', await c.ev(`window.__mark === 1 && !!__engine.state()`));
+  await c.ev(`__engine.stopGame('exit'); __engine.show('menu')`);
+  ok('back on the menu: the page reloads by itself, once', await until(`window.__mark === undefined && document.querySelectorAll('#list .card').length >= 14`, 10000));
+
+  // نسخة جديدة والقائمة مفتوحة: إعادة تحميل فورية
+  await c.ev(`window.__mark = 2`); build = 3; await c.ev(`navigator.serviceWorker.getRegistration().then(r => r.update())`);
+  ok('new version while on the menu: reloads by itself', await until(`window.__mark === undefined && !!navigator.serviceWorker.controller`, 12000));
   await sleep(800);
-  ok('during a game: no update bar and no reload', !(await bar()) && (await c.ev(`window.__mark === 1 && !!__engine.state()`)));
-  await c.ev(`__engine.stopGame('exit'); __engine.show('menu')`); await sleep(400);
-  ok('back on the menu: the bar appears («نسخة جديدة جاهزة» + «تحديث»)', (await bar()) && (await c.ev(`/نسخة جديدة جاهزة/.test(document.getElementById('upd').textContent) && document.getElementById('updGo').textContent === 'تحديث'`)));
-  const geo = await c.ev(`(()=>{const r=document.getElementById('upd').getBoundingClientRect(), g=document.getElementById('updGo').getBoundingClientRect(); return {bottom: innerHeight - r.bottom, h: Math.round(g.height), inside: r.left >= 0 && r.right <= innerWidth}})()`);
-  ok('bar sits at the bottom, inside the screen, «تحديث» ≥ 48px tall', geo.bottom >= 8 && geo.bottom < 60 && geo.h >= 48 && geo.inside, geo);
 
-  // ردهة التلفاز والإعدادات المفتوحة
-  await c.ev(`Pads.open()`); await sleep(500);
-  ok('TV lobby: no update bar (a room is open)', !(await bar()));
-  await c.ev(`Pads.close(); __engine.show('menu')`); await sleep(300);
-  ok('room closed, back on the menu: bar again', await bar());
+  // ردهة التلفاز مفتوحة: لا إعادة تحميل حتى تُغلق
+  await c.ev(`window.__mark = 3; Pads.open()`); await sleep(500);
+  build = 4; await c.ev(`navigator.serviceWorker.getRegistration().then(r => r.update())`); await sleep(2500);
+  ok('TV lobby open: no reload', await c.ev(`window.__mark === 3`));
+  await c.ev(`Pads.close(); __engine.show('menu')`);
+  ok('room closed, back on the menu: reloads by itself', await until(`window.__mark === undefined && document.querySelectorAll('#list .card').length >= 14`, 10000));
+  await sleep(800);
 
-  // «لاحقًا»
-  await c.ev(`document.getElementById('updNo').click()`); await sleep(200);
-  ok('«لاحقًا» hides the bar for this visit, nothing reloads', !(await bar()) && (await c.ev(`window.__mark === 1`)));
-  await c.ev(`__engine.startGame('games/tilt-maze.js')`); await sleep(800); await c.ev(`__engine.stopGame('exit'); __engine.show('menu')`); await sleep(300);
-  ok('…and stays hidden after another game', !(await bar()));
-
-  // «تحديث»: يُعاد التحميل مرة واحدة على النسخة الجديدة
-  await c.nav(BASE + '/index.html?debug=1', 1500); // زيارة جديدة: النسخة ما زالت تنتظر
-  ok('next visit: the waiting version is still waiting and the bar is offered', (await until(`!document.getElementById('upd').hidden`, 8000)) && (await swBuild()).waiting);
-  await c.ev(`window.__mark = 2; document.getElementById('updGo').click()`);
-  ok('«تحديث» activates the new version and reloads once', await until(`window.__mark === undefined && !!navigator.serviceWorker.controller`, 12000));
-  await sleep(1200); const after = await swBuild();
-  ok('after the update: no waiting version, no bar', !after.waiting && after.active && !(await bar()), after);
-  ok('page works after the update (menu built)', await c.ev(`document.querySelectorAll('#list .card').length >= 14`));
+  // صفحة من نسخة قديمة (لا تعرف إعادة التحميل وحدها): العامل الجديد يعيد فتحها
+  await c.ev(`caches.open('cam-games-0.5.1').then(()=>{ window.__mark = 4 })`); await sleep(200);
+  build = 5; await c.ev(`navigator.serviceWorker.getRegistration().then(r => r.update())`);
+  ok('legacy cache present: the new worker reopens the page', await until(`window.__mark === undefined && !!navigator.serviceWorker.controller`, 12000));
+  await sleep(800);
+  ok('legacy cache removed', await c.ev(`caches.keys().then(k => !k.includes('cam-games-0.5.1'))`));
+  const after = await swBuild();
+  ok('after all updates: one active version, nothing waiting, no bar', !after.waiting && after.active && !(await bar()), after);
   console.log(JSON.stringify({ pageErrors: c.log.filter(l => l.startsWith('exception')) }));
 } catch (e) { console.log('ERR', e); fails++; } finally { c.close(); srv.close(); process.exit(fails ? 1 : 0); }

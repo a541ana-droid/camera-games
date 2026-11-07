@@ -1,7 +1,7 @@
 'use strict';
 // المضيف: يملك الكاميرا والصوت والحلقة والحارس والرسم. كود اللعبة يعمل في Web Worker قابل للإنهاء (terminate) ولا يعمل أي سطر منه في هذا الخيط. لا ثقة بشيء قادم منه.
 (() => {
-  const VERSION = '0.5.2', MAJOR = 0, BUDGET_MS = 8, HB_TIMEOUT = 2000, BOOT_TIMEOUT = 4000, ALIVE_TIMEOUT = 2500, MAX_GAME_BYTES = 200000;
+  const VERSION = '0.5.3', MAJOR = 0, BUDGET_MS = 8, HB_TIMEOUT = 2000, BOOT_TIMEOUT = 4000, ALIVE_TIMEOUT = 2500, MAX_GAME_BYTES = 200000;
   const KNOWN = ['camera.view', 'camera.color', 'camera.motion', 'camera.lowres', 'camera.calibrate', 'audio', 'haptic', 'hud', 'players.local', 'camera.lanes', 'camera.playercolors', 'audio.mic', 'motion.device', 'players.pads'];
   const PLANNED = ['qr', 'players.network', 'hand', 'pose'];
   const MAX_MSG_PER_S = 400, MAX_BYTES = new URLSearchParams(location.search).get('debug') === '1' ? 8192 : 2048, MAX_TRACKS = 4, MEM_LIMIT = 192e6;
@@ -498,13 +498,13 @@
   const Upd = (() => {
     let reg = null, wait = null, asked = false, hidden = false, stale = false, lastCheck = 0;
     const idle = () => !$('menu').hidden && !S && !SER() && !(window.Pads && Pads.active());
-    const view = () => { const b = $('upd'); if (!b) return; const on = !!wait && !hidden && idle(); b.hidden = !on; if (!$('menu').hidden && reg && performance.now() - lastCheck > 3e5) { lastCheck = performance.now(); reg.update().catch(() => {}); } };
+    const view = () => { if (stale && !asked && idle()) { asked = true; return location.reload(); } const b = $('upd'); if (!b) return; const on = !!wait && !hidden && idle(); b.hidden = !on; if (!$('menu').hidden && reg && performance.now() - lastCheck > 3e5) { lastCheck = performance.now(); reg.update().catch(() => {}); } };
     const offer = w => { if (!w || !navigator.serviceWorker.controller) return; wait = w; ev('update-ready'); view(); };
     function watch(r) {
       reg = r; lastCheck = performance.now(); if (r.waiting) offer(r.waiting);
       r.addEventListener('updatefound', () => { const w = r.installing; if (!w) return; w.addEventListener('statechange', () => { if (w.state === 'installed') offer(w); }); });
       let had = !!navigator.serviceWorker.controller; // أول تولٍّ في أول زيارة (clients.claim) ليس تحديثًا: لا شريط
-      navigator.serviceWorker.addEventListener('controllerchange', () => { if (asked) return location.reload(); if (!had) { had = true; return; } stale = true; wait = wait || {}; view(); }); // ضغطة «تحديث» في تبويب آخر: هنا لا إعادة تحميل تلقائية، الشريط يظهر حين نعود إلى القائمة
+      navigator.serviceWorker.addEventListener('controllerchange', () => { if (asked) return location.reload(); if (!had) { had = true; return; } stale = true; wait = wait || {}; view(); }); // 0.5.3: نسخة جديدة تولّت ⇒ إعادة تحميل تلقائية حالًا إن كنا في القائمة، وإلا عند العودة إليها (لا أثناء لعبة ولا ردهة)
     }
     function go() { if (!wait || !idle()) return; asked = true; $('upd').hidden = true; if (stale || !wait.postMessage) return location.reload(); wait.postMessage({ t: 'skip' }); setTimeout(() => { if (asked) location.reload(); }, 4000); } // احتياط: إن لم يصل controllerchange
     return { watch, view, go, later() { hidden = true; view(); }, state: () => ({ waiting: !!wait, shown: !$('upd').hidden, asked }) };
