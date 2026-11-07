@@ -1,7 +1,7 @@
 'use strict';
 // المضيف: يملك الكاميرا والصوت والحلقة والحارس والرسم. كود اللعبة يعمل في Web Worker قابل للإنهاء (terminate) ولا يعمل أي سطر منه في هذا الخيط. لا ثقة بشيء قادم منه.
 (() => {
-  const VERSION = '0.7.0', MAJOR = 0, BUDGET_MS = 8, HB_TIMEOUT = 2000, BOOT_TIMEOUT = 4000, ALIVE_TIMEOUT = 2500, MAX_GAME_BYTES = 200000;
+  const VERSION = '0.7.1', MAJOR = 0, BUDGET_MS = 8, HB_TIMEOUT = 2000, BOOT_TIMEOUT = 4000, ALIVE_TIMEOUT = 2500, MAX_GAME_BYTES = 200000;
   const KNOWN = ['camera.view', 'camera.color', 'camera.motion', 'camera.lowres', 'camera.calibrate', 'audio', 'haptic', 'hud', 'players.local', 'camera.lanes', 'camera.playercolors', 'audio.mic', 'motion.device', 'players.pads'];
   const PLANNED = ['qr', 'players.network', 'hand', 'pose'];
   const MAX_MSG_PER_S = 400, MAX_BYTES = new URLSearchParams(location.search).get('debug') === '1' ? 8192 : 2048, MAX_TRACKS = 4, MEM_LIMIT = 192e6;
@@ -9,7 +9,7 @@
   const RATE = { 'mic.start': 5, 'audio.tone': 30, 'audio.melody': 10, haptic: 10, hud: 30, 'pads.say': 20, 'pads.vib': 20, 'pads.ctl': 10, 'pads.choices': 30, 'pads.touch': 30 };
   const $ = id => document.getElementById(id);
   // بريد التواصل (0.7.0): المكان الوحيد له. فارغ ⇒ لا يظهر سطر البريد في «تواصل معنا» (الإعدادات ← حول)، ويبقى رابط GitHub Issues وحده.
-  const CONTACT_EMAIL = '';
+  const CONTACT_EMAIL = 'a541ana@gmail.com';
   const vq = u => u + (u.includes('?') ? '&' : '?') + 'v=' + VERSION.replace(/\./g, ''); // ملفات يجلبها المحرك بنفسه تحمل رقم نسخته (كما في index.html) فلا يخدمها مخزن HTTP من نسخة أخرى؛ عامل الخدمة يتجاهل الاستعلام
   const qs = new URLSearchParams(location.search), DEBUG = qs.get('debug') === '1', ENDMAX = DEBUG ? 4000 : 300; // نص نهاية اللعبة: 300 حرفًا (4000 في ?debug=1 كي تحمل الاختبارات نتائجها)
   const DEBUG_NOSW = new URLSearchParams(location.search).get('nosw') === '1';
@@ -517,7 +517,8 @@
     }
     $('aboutVer').textContent = VERSION; $('setClose').onclick = closeSettings;
     const mail = String(CONTACT_EMAIL || '').trim(), ml = $('mailL'); // يُبنى السطر فقط حين يُضبط البريد
-    if (ml && /^[^\s@<>"']+@[^\s@<>"']+\.[a-z]{2,}$/i.test(mail)) { const a = document.createElement('a'); a.className = 'btn sm'; a.href = 'mailto:' + mail; a.textContent = mail; a.dir = 'ltr'; ml.textContent = 'البريد '; ml.append(a); ml.hidden = false; }
+    if (ml && /^[^\s@<>"']+@[^\s@<>"']+\.[a-z]{2,}$/i.test(mail)) { const a = document.createElement('a'); a.className = 'btn sm'; a.href = 'mailto:' + mail; a.textContent = mail; a.dir = 'ltr'; ml.textContent = 'راسلنا بالبريد '; ml.append(a); ml.hidden = false; }
+    { const f = document.querySelector('.foot a[data-mail]'); if (f && ml && !ml.hidden) { f.href = 'mailto:' + mail; f.removeAttribute('target'); } }
     st.onclick = e => { if (e.target === st) closeSettings(); };
     st.onkeydown = e => { if (e.key === 'Escape') closeSettings(); };
     $('pWipe').onclick = () => {
