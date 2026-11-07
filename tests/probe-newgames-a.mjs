@@ -8,7 +8,7 @@ try {
   for (const [v, w, h, m] of [['phone', 390, 844, true], ['tv', 1920, 1080, false]]) {
     await c.send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: m });
     await c.nav(BASE + '/index.html?debug=1&mode=auto'); await c.ev(`document.getElementById('synth').checked=true`);
-    for (const g of ['balloon-bop', 'simon-zones', 'goalie']) { await c.ev(`__engine.startGame('games/${g}.js')`); await sleep(2000); await shot(g + '-intro-' + v); await c.ev(`__engine.stopGame('exit')`); await sleep(300); }
+    for (const g of ['balloon-bop', 'hopscotch', 'goalie']) { await c.ev(`__engine.startGame('games/${g}.js')`); await sleep(2000); await shot(g + '-intro-' + v); await c.ev(`__engine.stopGame('exit')`); await sleep(300); }
   }
   await c.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
   await c.nav(BASE + '/index.html?debug=1&mode=auto'); await c.ev(`document.getElementById('synth').checked=true; DebugSynth.state.hand=null; DebugSynth.state.blobs=[]; __engine.events.length=0; __engine.startGame('games/balloon-bop.js')`); await sleep(2000);

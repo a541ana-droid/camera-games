@@ -144,6 +144,13 @@
   // إعدادات الأسرة (0.5.2، ENGINE.md §3.5): أرقام يمرّرها المضيف، تُطبَّع هنا وتُجمَّد. للقراءة فقط: تغييرها من اللعبة لا يغيّر شيئًا في المضيف.
   const PRF = (() => { const p = SPEC.prefs || {}, f = (v, a, b, d) => (typeof v === 'number' && isFinite(v)) ? Math.min(b, Math.max(a, v)) : d;
     const d = f(p.difficulty, 0, 2, 1) | 0; return Object.freeze({ roundScale: f(p.roundScale, 0.3, 3, 1), difficulty: d, reducedMotion: p.reducedMotion === true, textScale: f(p.textScale, 1, 1.5, 1) }); })();
+  // حزمة الأسئلة (0.6.1، ENGINE.md §3.6): المضيف نظّفها وخلط ترتيب أسئلتها؛ هنا تُطبَّع مرة ثانية (حدّ الثقة نفسه) وتُجمَّد كلها. لا تخزين ولا شبكة.
+  const PACK = (() => { const p = SPEC.pack; if (!p || typeof p !== 'object' || !Array.isArray(p.questions)) return null;
+    const str = (v, n) => typeof v === 'string' ? v.slice(0, n) : '', qs = [];
+    for (const x of p.questions.slice(0, 200)) { if (!x || typeof x !== 'object' || !Array.isArray(x.choices)) continue; const ch = x.choices.slice(0, 4).map(c => str(c, 60)); const a = x.answer;
+      if (ch.length < 2 || ch.some(c => !c) || !Number.isInteger(a) || a < 0 || a >= ch.length || !str(x.q, 140)) continue;
+      const o = { q: str(x.q, 140), choices: Object.freeze(ch), answer: a }; if (str(x.explain, 200)) o.explain = str(x.explain, 200); if (x.kid === true) o.kid = true; qs.push(Object.freeze(o)); }
+    return qs.length ? Object.freeze({ id: str(p.id, 40), title: str(p.title, 40), questions: Object.freeze(qs) }) : null; })();
   function makeUi() {
     const lin = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }, lum = (r, g, b) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b); // سطوع نسبي (WCAG): فوق ≈0.18 يكون النص الداكن أوضح من الأبيض
     const acc = /^#[0-9a-fA-F]{6}$/.test(SPEC.accent || '') ? SPEC.accent : '#7c6cff', ar = parseInt(acc.slice(1, 3), 16), ag = parseInt(acc.slice(3, 5), 16), ab = parseInt(acc.slice(5, 7), 16);
@@ -531,11 +538,12 @@
   // ---------- الأذرع (players.pads): قائمة ومدخلات أرقام فقط يمرّرها المضيف؛ لا شبكة هنا (ENGINE.md §3.4) ----------
   const TEAMS = { mode: (SPEC.teams && SPEC.teams.mode) || 'free', of: [] };
   if (SPEC.teams && Array.isArray(SPEC.teams.of)) for (const [i, t] of SPEC.teams.of) TEAMS.of[i] = t;
-  let padList = [], padJoin = null, padLeave = null; const padIn = [], padPrev = [];
+  let padList = [], padJoin = null, padLeave = null, padChoice = null, padFind = null, chId = 0; const padIn = [], padPrev = [];
+  const newPadIn = c => ({ x: 0, y: 0, a: false, b: false, aDown: false, bDown: false, aTaps: 0, bTaps: 0, tx: 0, ty: 0, connected: c, choice: -1, choiceMs: 0, finger: false, fx: 0, fy: 0 });
   const freezePad = p => Object.freeze({ index: p.index | 0, name: String(p.name || '').slice(0, 16), colorIndex: ((p.colorIndex | 0) % 4 + 4) % 4, color: String(p.color || '#7c6cff').slice(0, 9), team: p.team === 0 || p.team === 1 ? p.team : -1, connected: !!p.connected });
   function setPads(list, fire) {
     const old = new Map(padList.map(p => [p.index, p])); padList = Object.freeze((Array.isArray(list) ? list.slice(0, 8) : []).map(freezePad).sort((a, b) => a.index - b.index));
-    for (const p of padList) { if (TEAMS.mode !== 'free') TEAMS.of[p.index] = p.team; if (!padIn[p.index]) padIn[p.index] = { x: 0, y: 0, a: false, b: false, aDown: false, bDown: false, aTaps: 0, bTaps: 0, tx: 0, ty: 0, connected: p.connected }; padIn[p.index].connected = p.connected; }
+    for (const p of padList) { if (TEAMS.mode !== 'free') TEAMS.of[p.index] = p.team; if (!padIn[p.index]) padIn[p.index] = newPadIn(p.connected); padIn[p.index].connected = p.connected; }
     if (!fire) return;
     for (const p of padList) { const o = old.get(p.index); if (p.connected && (!o || !o.connected) && padJoin) guard(() => padJoin(p)); if (!p.connected && o && o.connected && padLeave) guard(() => padLeave(p)); }
   }
@@ -543,12 +551,34 @@
   function padInputs(a) { // [index,x,y,a,b,aCount,bCount,tx,ty]*n ؛ ضغطات الحافة تُحسب هنا من العدّادات فلا تضيع ضغطة أقصر من إطار
     for (const s of padIn) if (s) { s.aDown = s.bDown = false; s.aTaps = s.bTaps = 0; }
     for (let k = 0; k + 8 < a.length; k += 9) {
-      const i = a[k] | 0; if (i < 0 || i > 7) continue; const s = padIn[i] || (padIn[i] = { x: 0, y: 0, a: false, b: false, aDown: false, bDown: false, aTaps: 0, bTaps: 0, tx: 0, ty: 0, connected: true }), pv = padPrev[i] || (padPrev[i] = [0, 0]); // المضيف يبدأ عدّادَي كل مقعد من 0 مع كل لعبة، فأول إطار يحسب ما ضُغط قبله
+      const i = a[k] | 0; if (i < 0 || i > 7) continue; const s = padIn[i] || (padIn[i] = newPadIn(true)), pv = padPrev[i] || (padPrev[i] = [0, 0]); // المضيف يبدأ عدّادَي كل مقعد من 0 مع كل لعبة، فأول إطار يحسب ما ضُغط قبله
       s.x = num(a[k + 1], 0); s.y = num(a[k + 2], 0); s.a = !!a[k + 3]; s.b = !!a[k + 4]; s.tx = num(a[k + 7], 0); s.ty = num(a[k + 8], 0);
       const ac = a[k + 5] | 0, bc = a[k + 6] | 0; s.aTaps = Math.max(0, Math.min(20, ac - pv[0])); s.bTaps = Math.max(0, Math.min(20, bc - pv[1])); s.aDown = s.aTaps > 0; s.bDown = s.bTaps > 0; pv[0] = ac; pv[1] = bc;
     }
   }
-  const NOPAD = Object.freeze({ x: 0, y: 0, a: false, b: false, aDown: false, bDown: false, aTaps: 0, bTaps: 0, tx: 0, ty: 0, connected: false });
+  // الإصبع (0.6): [index, مضغوط, x, y]*n لكل جوال في شاشة اللمس فقط
+  function padFingers(a) { for (let k = 0; k + 3 < a.length; k += 4) { const i = a[k] | 0, s = i >= 0 && i <= 7 ? padIn[i] : null; if (!s) continue; s.finger = !!a[k + 1]; s.fx = clamp01(num(a[k + 2], 0)); s.fy = clamp01(num(a[k + 3], 0)); } }
+  // أحداث الشاشات (0.6): [نوع(0 اختيار، 1 عثور), index, k, ms, id]*n — يرتّبها المضيف ويتحقّق منها؛ تُسلَّم قبل update في الإطار نفسه
+  function padEvents(a) {
+    for (let k = 0; k + 4 < a.length; k += 5) {
+      const kind = a[k] | 0, i = a[k + 1] | 0, v = a[k + 2] | 0, ms = Math.max(0, num(a[k + 3], 0)), id = num(a[k + 4], 0); if (i < 0 || i > 7) continue;
+      if (kind === 0) { const s = padIn[i] || (padIn[i] = newPadIn(true)); s.choice = v; s.choiceMs = ms; if (padChoice) guard(() => padChoice({ index: i, choice: v, ms, id })); }
+      else if (kind === 1 && padFind) guard(() => padFind({ index: i, item: v, ms, id }));
+    }
+  }
+  const clamp01 = v => (v < 0 ? 0 : v > 1 ? 1 : v), r3 = v => Math.round(v * 1000) / 1000, HEX = /^#[0-9a-fA-F]{6}$/, TSH = ['circle', 'square', 'triangle', 'diamond', 'star'];
+  const forPads = (i, f) => { for (const p of padList) if (i < 0 || p.index === i) f(padIn[p.index] || (padIn[p.index] = newPadIn(p.connected))); };
+  function choiceSpec(o) { // شاشة الاختيار: 2–4 أزرار كبيرة {text, color, shape}
+    const items = Array.isArray(o) ? o : o && o.items; if (!Array.isArray(items) || items.length < 2 || items.length > 4) throw new EngineError('api.pads.choices(i, {items}): من 2 إلى 4 أزرار، كل زرّ نص أو {text, color, shape}');
+    return { id: num(o && o.id, ++chId), prompt: String((o && o.prompt) || '').slice(0, 40), items: items.map(it => { const x = typeof it === 'object' && it ? it : { text: it };
+      return { text: String(x.text == null ? '' : x.text).slice(0, 16), color: HEX.test(x.color || '') ? x.color : '', shape: Number.isInteger(x.shape) && x.shape >= 0 && x.shape <= 3 ? x.shape : -1 }; }) };
+  }
+  function touchSpec(o) { // شاشة اللمس/المصباح: مخطّط صغير يرسمه الجوال وحده (لا رسم من اللعبة في كل إطار)
+    o = o || {}; const items = Array.isArray(o.items) ? o.items : []; if (items.length > 20) throw new EngineError('api.pads.touch: 20 عنصرًا على الأكثر في items');
+    return { id: num(o.id, ++chId), dark: !!o.dark, light: r3(Math.min(0.5, Math.max(0.05, num(o.light, 0.16)))), hint: !!o.hint, items: items.map(it => { it = it || {};
+      return { x: r3(clamp01(num(it.x, 0.5))), y: r3(clamp01(num(it.y, 0.5))), r: r3(Math.min(0.3, Math.max(0.02, num(it.r, 0.06)))), shape: TSH.includes(it.shape) ? it.shape : 'circle', color: HEX.test(it.color || '') ? it.color : '#ffffff', text: String(it.text == null ? '' : it.text).slice(0, 4), goal: !!it.goal }; }) };
+  }
+  const NOPAD = Object.freeze(newPadIn(false));
   function padApi() {
     const P = 'players.pads', ix = i => { i = Math.round(num(i, -1)); return i < -1 || i > 7 ? -1 : i; };
     return Object.freeze({
@@ -560,6 +590,10 @@
       onLeave(cb) { need(P, 'api.pads.onLeave'); padLeave = typeof cb === 'function' ? cb : null; },
       say(i, text) { need(P, 'api.pads.say'); send({ t: 'pads.say', i: ix(i), text: String(text == null ? '' : text).slice(0, 60) }); },
       vibrate(i, ms) { need(P, 'api.pads.vibrate'); send({ t: 'pads.vib', i: ix(i), ms: num(ms, 40) }); },
+      choices(i, o) { need(P, 'api.pads.choices'); i = ix(i); const sp = o == null ? null : choiceSpec(o); forPads(i, s => { s.choice = -1; s.choiceMs = 0; }); send({ t: 'pads.choices', i, spec: sp }); return sp ? sp.id : 0; },
+      touch(i, o) { need(P, 'api.pads.touch'); i = ix(i); const sp = o == null || o === false ? null : touchSpec(o); forPads(i, s => { s.finger = false; }); send({ t: 'pads.touch', i, spec: sp }); return sp ? sp.id : 0; },
+      onChoice(cb) { need(P, 'api.pads.onChoice'); padChoice = typeof cb === 'function' ? cb : null; },
+      onFind(cb) { need(P, 'api.pads.onFind'); padFind = typeof cb === 'function' ? cb : null; },
       controls(o, i) { need(P, 'api.pads.controls'); o = o || {}; send({ t: 'pads.ctl', i: i == null ? -1 : ix(i), stick: o.stick !== false, a: String(o.a == null ? '' : o.a).slice(0, 12), b: String(o.b == null ? '' : o.b).slice(0, 12), tilt: !!o.tilt }); }
     });
   }
@@ -601,6 +635,7 @@
       end(o) { o = o || {}; const arr = a => Array.isArray(a) ? a.slice(0, 8).map(x => num(x, 0)) : undefined; send({ t: 'end', scores: arr(o.scores), ranks: arr(o.ranks), teamScores: Array.isArray(o.teamScores) ? o.teamScores.slice(0, 2).map(x => num(x, 0)) : undefined, score: num(o.score, 0), text: o.text == null ? '' : String(o.text).slice(0, SPEC.endmax || 300) }); }
     };
     Object.defineProperty(A, 'prefs', { value: PRF, enumerable: true, writable: false, configurable: false }); // للقراءة فقط (0.5.2)
+    Object.defineProperty(A, 'pack', { value: PACK, enumerable: true, writable: false, configurable: false }); // حزمة الأسئلة (0.6.1، §3.6): بيانات مجمّدة للقراءة فقط، أو null
     return A;
   }
   const guard = f => { try { f(); } catch (x) { fatal(x); } };
@@ -616,7 +651,8 @@
     const dt = last < 0 ? 0 : Math.min(.1, Math.max(0, (m.ts - last) / 1000)); last = m.ts; T += dt;
     const a = now(); beginFrame();
     if (Array.isArray(m.pi)) padInputs(m.pi);
-    guard(() => { if (m.p) pointers(m.p); if (uiStep) uiStep(dt); if (game.update) game.update(dt, T); if (game.render && !dead) game.render(ctx, W, H); });
+    if (Array.isArray(m.pf)) padFingers(m.pf);
+    guard(() => { if (Array.isArray(m.pe)) padEvents(m.pe); if (m.p) pointers(m.p); if (uiStep) uiStep(dt); if (game.update) game.update(dt, T); if (game.render && !dead) game.render(ctx, W, H); });
     const ms = now() - a; let mem = 0; if (MEM.over || a - memAt > 500) { memAt = a; mem = Math.max(MEM.over, MEM.live, performance.memory ? performance.memory.usedJSHeapSize : 0); }
     send({ t: 'frame', b: buf.slice(0, n), ms, ov: over ? 1 : 0, mem });
   }

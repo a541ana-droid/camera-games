@@ -14,7 +14,7 @@ const Q = '?debug=1&net=bc&nosw=1';
 const NAMES = ['سارة', 'حمد', 'ريم', 'يوسف'];
 const pads = [];
 const mouse = async (p, type, x, y) => p.send('Input.dispatchMouseEvent', { type, x, y, button: 'left', buttons: type === 'mouseReleased' ? 0 : 1, clickCount: 1 });
-const rect = async (p, sel) => p.ev(`(()=>{const e=document.querySelector(${JSON.stringify(sel)}); if(!e) return null; const r=e.getBoundingClientRect(); return [r.x+r.width/2, r.y+r.height/2, r.width, r.height]})()`);
+const rect = async (p, sel) => p.ev(`(()=>{const e=document.querySelector(${JSON.stringify(sel)}); if(!e) return null; e.scrollIntoView({block:"center"}); const r=e.getBoundingClientRect(); return [r.x+r.width/2, r.y+r.height/2, r.width, r.height]})()`);
 const tapEl = async (p, sel, n = 1) => { const r = await rect(p, sel); if (!r) throw new Error('no ' + sel); for (let i = 0; i < n; i++) { await mouse(p, 'mousePressed', r[0], r[1]); await sleep(40); await mouse(p, 'mouseReleased', r[0], r[1]); await sleep(60); } };
 async function openPad(url, i) {
   const p = await c.tab('about:blank');
@@ -38,9 +38,10 @@ try {
   const qrUrl = await until(() => c.ev(`document.querySelector('#tv canvas.qr').dataset.url||''`), 5000);
   ok('QR (local generator) encodes the same site + #pad=CODE', qrUrl === st.url && qrUrl.endsWith('#pad=' + st.code) && qrUrl.startsWith(BASE + '/index.html'), qrUrl);
   ok('QR library loaded from this site only (vendor/qrcode.js)', await c.ev(`[...document.scripts].some(s=>s.src.endsWith('/vendor/qrcode.js')) && typeof qrcode==='function'`));
-  await until(async () => (await c.ev(`document.querySelectorAll('#tvGames .gcard').length`)) >= 3, 6000);
+  const padGames = readFileSync(new URL('../games/index.txt', import.meta.url), 'utf8').split('\n').map(s => s.trim()).filter(n => /\.js$/.test(n) && /@capabilities[^\n]*players\.pads/.test(readFileSync(new URL('../games/' + n, import.meta.url), 'utf8'))).length;
+  await until(async () => (await c.ev(`document.querySelectorAll('#tvGames .gcard').length`)) >= padGames, 6000);
   const games = await c.ev(`[...document.querySelectorAll('#tvGames .gcard b')].map(b=>b.textContent)`);
-  ok('game picker lists only pad games (3)', games.length === 3, games);
+  ok('game picker lists only pad games (' + padGames + ' in index.txt)', games.length === padGames, games);
   // جوالان أولًا ثم اثنان
   for (let i = 0; i < 4; i++) pads.push(await openPad(st.url, i));
   await until(async () => (await host()).pads.filter(p => p.connected).length === 4, 8000);
@@ -91,7 +92,8 @@ try {
   st = await host();
   ok('teams mode assigns A/B alternately to connected pads', st.mode === 'teams' && st.pads.filter(p => p.connected).map(p => p.team).join() === '0,1,0', st.pads.map(p => [p.index, p.team, p.connected]));
   await c.ev(`Pads._play('tests/games/pad-probe.js')`);
-  await until(async () => (await Promise.all([0, 1, 2].map(i => pads[i].ev('PadApp.state().view')))).every(v => v === 'ctl'), 6000); await sleep(500);
+  await until(async () => (await Promise.all([0, 1, 2].map(i => pads[i].ev('PadApp.state().view')))).every(v => v === 'ctl'), 6000);
+  await until(async () => (await Promise.all([0, 1, 2].map(i => pads[i].ev(`!!document.getElementById('padBtnB')`)))).every(Boolean), 6000); await sleep(300); // أزرار اللعبة (controls) تصل بعد «play» بقليل؛ على جهاز مشغول قد تتأخر أكثر من 500ms
   await tapEl(pads[0], '#padBtnA', 2); await tapEl(pads[1], '#padBtnA', 1); await tapEl(pads[2], '#padBtnA', 3);
   await sleep(400); await tapEl(pads[0], '#padBtnB');
   const end2 = await until(async () => { const l = (await host()).last; return l && l.team ? l : null; }, 6000);

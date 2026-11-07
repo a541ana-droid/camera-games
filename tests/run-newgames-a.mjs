@@ -1,4 +1,4 @@
-// يختبر ثلاث ألعاب جديدة (balloon-bop, simon-zones, goalie) بجوال عمودي 390×844 وتلفاز 1920×1080: يبدأ كل لعبة، يحقن حركة اصطناعية، ويتحقق من الوصول إلى api.end بدرجة منتهية بلا أخطاء صفحة. يحفظ لقطة منتصف اللعب في مجلد النظام المؤقت.
+// يختبر ثلاث ألعاب جديدة (balloon-bop, hopscotch, goalie) بجوال عمودي 390×844 وتلفاز 1920×1080: يبدأ كل لعبة، يحقن حركة اصطناعية، ويتحقق من الوصول إلى api.end بدرجة منتهية بلا أخطاء صفحة. يحفظ لقطة منتصف اللعب في مجلد النظام المؤقت.
 import { writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { chrome, BASE, sleep } from './lib.mjs';
@@ -9,7 +9,7 @@ const VIEWS = { phone: [390, 844, true], tv: [1920, 1080, false] };
 // cfg: لعبة، عدد اللاعبين (أو 0 بلا اختيار)، حركة اصطناعية
 const GAMES = [
   { f: 'balloon-bop', runs: [['phone', 0], ['tv', 0], ['phone', 0, 'still']] },
-  { f: 'simon-zones', runs: [['phone', 3], ['tv', 1]] },
+  { f: 'hopscotch', runs: [['phone', 3], ['tv', 1]], cy: 0.6, sy: 0.74 },
   { f: 'goalie', runs: [['phone', 1], ['tv', 4]] },
 ];
 async function run(g, idx) {
@@ -25,7 +25,7 @@ async function run(g, idx) {
       const un = Math.min(W, H) / 100;
       if (players) { // اختيار عدد اللاعبين ثم «ابدأ»
         const tot = Math.min(W - un * 6, 440), gap = un * 2.5, bw = (tot - gap * 3) / 4, x0 = (W - tot) / 2;
-        await tap(x0 + (players - 1) * (bw + gap) + bw / 2, H * 0.46 + 28); await tap(W / 2, H * 0.62 + 29);
+        await tap(x0 + (players - 1) * (bw + gap) + bw / 2, H * (g.cy || 0.46) + 28); await tap(W / 2, H * (g.sy || 0.62) + 29);
       } else await tap(W / 2, H * 0.6);
       await sleep(4300);
       // حركة اصطناعية: يد تتحرك يمينًا ويسارًا وعلى ارتفاعات مختلفة، وكتلة ثانية
@@ -42,5 +42,5 @@ async function run(g, idx) {
     ok(g.f + ' no page exceptions', !c.log.some(l => l.startsWith('exception')), c.log.filter(l => l.startsWith('exception')));
   } catch (e) { console.log('ERR', g.f, e); fails++; } finally { c.close(); }
 }
-await Promise.all(GAMES.map(run));
+await Promise.all(GAMES.filter(g => !process.env.ONLY || g.f.includes(process.env.ONLY)).map(run));
 console.log(fails ? `FAILED ${fails}` : 'ALL PASS'); process.exit(fails ? 1 : 0);

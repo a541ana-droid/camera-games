@@ -5,6 +5,11 @@
 // @accent #ff6b8b
 // @engine 0.2
 // @capabilities camera.motion audio haptic hud players.local
+// @players 1-6
+// @minutes 1
+// @age 4
+// @play camera
+// @style coop
 // كل الكاميرا هنا شبكة حركة 5×4 فقط (لا صورة). كل خلية متحركة تدفع البالون بعيدًا عنها فتُحرّكه الأيدي من تحته.
 
 // إعدادات الأسرة (ENGINE.md §3.5): RS يضرب مدة الجولة، DIFF 0 سهل / 1 عادي (سلوك ما قبلها حرفيًا) / 2 صعب. by3(سهل، عادي، صعب).

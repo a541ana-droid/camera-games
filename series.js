@@ -7,7 +7,8 @@
   const MAXP = 4, MAXR = 20, PATH = /^[\w./-]+\.js$/;
   let ph = 'idle', st = null, cfg = { n: 2, names: [], pick: null, rounds: 5, teams: false }, catalog = null; // ph: idle | setup | prep | playing | standings | final
   const arn = String;
-  const hero = () => { const i = h('img', { className: 'shero', src: 'series.jpg', alt: '', decoding: 'async' }); i.onerror = () => i.remove(); return i; };
+  // 0.6.1: بلا صورة رأس (كانت فيها شخصيات بوجوه، خلاف DESIGN.md §8): شريط بألوان اللاعبين الأربعة فقط
+  const hero = () => h('div', { className: 'sband', 'aria-hidden': 'true' });
   const h = (tag, p, ...kids) => { const e = document.createElement(tag); Object.assign(e, p || {}); e.append(...kids.filter(k => k != null)); return e; };
   const btn = (t, f, cls) => h('button', { textContent: t, className: cls || '', onclick: f });
   const view = (...kids) => { const v = $('ser'); v.textContent = ''; v.append(...kids.filter(k => k != null)); v.scrollTop = 0; E.show('ser'); };

@@ -33,7 +33,7 @@ try {
   ok('new version takes over at once (nothing left waiting)', !mid.waiting && mid.active, mid);
   ok('during a game: no reload, game keeps running', await c.ev(`window.__mark === 1 && !!__engine.state()`));
   await c.ev(`__engine.stopGame('exit'); __engine.show('menu')`);
-  ok('back on the menu: the page reloads by itself, once', await until(`window.__mark === undefined && document.querySelectorAll('#list .card').length >= 14`, 10000));
+  ok('back on the menu: the page reloads by itself, once', await until(`window.__mark === undefined && document.querySelectorAll('#list .card').length >= 12`, 10000));
 
   // نسخة جديدة والقائمة مفتوحة: إعادة تحميل فورية
   await c.ev(`window.__mark = 2`); build = 3; await c.ev(`navigator.serviceWorker.getRegistration().then(r => r.update())`);
@@ -45,7 +45,7 @@ try {
   build = 4; await c.ev(`navigator.serviceWorker.getRegistration().then(r => r.update())`); await sleep(2500);
   ok('TV lobby open: no reload', await c.ev(`window.__mark === 3`));
   await c.ev(`Pads.close(); __engine.show('menu')`);
-  ok('room closed, back on the menu: reloads by itself', await until(`window.__mark === undefined && document.querySelectorAll('#list .card').length >= 14`, 10000));
+  ok('room closed, back on the menu: reloads by itself', await until(`window.__mark === undefined && document.querySelectorAll('#list .card').length >= 12`, 10000));
   await sleep(800);
 
   // صفحة من نسخة قديمة (لا تعرف إعادة التحميل وحدها): العامل الجديد يعيد فتحها

@@ -5,6 +5,11 @@
 // @accent #3ddc97
 // @engine 0.2
 // @capabilities camera.view camera.lanes camera.playercolors audio haptic hud players.local
+// @players 2-4
+// @minutes 2
+// @age 5
+// @play camera
+// @style versus
 // مرجع القدرتين الجديدتين: api.track.lanes (حارات بحسب الحركة) و api.track.colorPerPlayer (لون لكل لاعب).
 // داخل سلسلة (دوري) تُلعب مرة واحدة بعدد حاراتها = عدد لاعبي السلسلة، وتُبلغ بالمراكز عبر api.end({ranks, scores}) فتُحتسب النقاط.
 

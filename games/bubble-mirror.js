@@ -1,20 +1,25 @@
 // @title فقاعات
-// @desc فقاعات ملوّنة تطفو أمامك وصورتك خلفها كالمرآة. لوّح بيدك أو حرّك جسمك عند الفقاعة لتنفجر! لعبة هادئة لكل العائلة: كلنا معًا بنقاط مشتركة، أو لكل لاعب لونه وحارته. ثبّت الجهاز على حامل.
+// @desc فقاعات ملوّنة تطفو أمامك وصورتك خلفها كالمرآة. لوّح بيدك أو حرّك جسمك عند الفقاعة لتنفجر! لعبة هادئة لكل العائلة: كلنا معًا بنقاط مشتركة، أو لكل لاعب لونه وحارته، أو «تحدّي»: فقاعة واحدة تنكمش فأسرِع إليها قبل أن تختفي. ثبّت الجهاز على حامل.
 // @howto فجّر الفقاعات بيدك
 // @howto-act pop
 // @accent #4dc3ff
 // @engine 0.2
 // @capabilities camera.view camera.motion audio haptic hud players.local
+// @players 1-4
+// @minutes 1
+// @age 4
+// @play camera
+// @style coop versus calm
 // هنا عرض الكاميرا هو لبّ اللعبة: تُظهر الصورة خافتة خلف الفقاعات (إن أطفأها المستخدم من القائمة تبقى اللعبة تعمل على خلفية المحرك).
 
 // إعدادات الأسرة (ENGINE.md §3.5): RS يضرب مدة الجولة، DIFF 0 سهل / 1 عادي (سلوك ما قبلها حرفيًا) / 2 صعب. by3(سهل، عادي، صعب).
 let RS = 1, DIFF = 1; const by3 = (e, m, h) => DIFF === 0 ? e : DIFF === 2 ? h : m;
-const TAU = 6.2832, GOLD_EVERY = 9; let ROUND = 50, BSPD = 1, BSZ = 1, POPE = 0.1;
+const TAU = 6.2832, GOLD_EVERY = 9; let ROUND = 50, BSPD = 1, BSZ = 1, POPE = 0.1, LIFE0 = 1.8, LIFEMIN = 0.9, LIFEDEC = 0.05; // LIFE*: مهلة فقاعة «تحدّي» (من مطرقة الهواء المدموجة)
 const PASTEL = ['#7fd4ff', '#ff9ed2', '#ffe27a', '#9af0c4', '#c3a6ff'];
 let api, ui, state = 'intro', mode = 'shared', count = 2, handle = null, cells = [], GC = 8, GR = 12, t = 0, left = ROUND, W = 400, H = 700, spawnN = 0, endIn = -1;
-const score = [0, 0, 0, 0], B = [], P = [], PN = 160; let pi = 0, BN = 7;
+const score = [0, 0, 0, 0], B = [], P = [], PN = 160; let pi = 0, BN = 7, miss = 0;
 const modeR = [], cntR = [], startR = { x: 0, y: 0, w: 220, h: 58 };
-for (let i = 0; i < 14; i++) B.push({ on: false, x: 0, y: 0, r: 40, vy: 50, ph: 0, sw: 0, col: '#fff', gold: false, lane: 0, age: 0 });
+for (let i = 0; i < 14; i++) B.push({ on: false, x: 0, y: 0, r: 40, vy: 50, ph: 0, sw: 0, col: '#fff', gold: false, lane: 0, age: 0, life: 0, max: 1 });
 for (let i = 0; i < PN; i++) P.push({ x: 0, y: 0, vx: 0, vy: 0, l: 0, s: 3, c: '#fff', ring: 0 });
 
 function emit(x, y, col, n, spd, size, ring) {
@@ -28,6 +33,10 @@ function spawn(b, lane) {
   b.y = H + b.r + Math.random() * H * 0.12; for (let k = 0; k < 6; k++) { b.x = x0 + b.r + Math.random() * Math.max(1, lw - 2 * b.r); let free = true; for (const o of B) if (o !== b && o.on && Math.hypot(o.x - b.x, o.y - b.y) < (o.r + b.r) * 0.95) free = false; if (free) break; }
   b.vy = H * (0.07 + Math.random() * 0.05) * BSPD; b.ph = Math.random() * TAU; b.sw = b.r * (0.2 + Math.random() * 0.3);
   b.lane = l0; spawnN++; b.gold = spawnN % GOLD_EVERY === 0; b.col = b.gold ? '#ffd24a' : colorOf(b); b.on = true; b.age = 0;
+  if (mode === 'challenge') { // فقاعة واحدة ثابتة في مكان عشوائي، تنكمش مع مهلتها (تقصر كلما زادت النقاط)
+    b.r = Math.min(150 * BSZ, m * 0.14 * BSZ); b.vy = 0; b.sw = b.r * 0.08; const top = ui.safe.top + b.r + 20, bot = H - ui.safe.bottom - b.r - 10;
+    b.x = b.r + 10 + Math.random() * Math.max(1, W - 2 * b.r - 20); b.y = top + Math.random() * Math.max(1, bot - top); b.max = b.life = Math.max(LIFEMIN, LIFE0 - score[0] * LIFEDEC);
+  }
 }
 function popB(b) {
   b.on = false; const v = b.gold ? 3 : 1, col = b.col; score[b.lane] += v;
@@ -36,11 +45,11 @@ function popB(b) {
   if (b.gold) { api.audio.melody([{ freq: 660, ms: 80 }, { freq: 880, ms: 80 }, { freq: 1100, ms: 140 }]); ui.flash('#ffd24a', 0.2); }
   api.hud.set({ score: mode === 'split' ? '' : ui.num(score[0]) });
 }
-function layout(w, h) { ui.row(modeR, 2, h * 0.4, 54, 10, 420); ui.row(cntR, 3, h * 0.53, 50, 8, 330); startR.w = Math.min(w * 0.7, 280); startR.x = (w - startR.w) / 2; startR.y = h * 0.67; }
+function layout(w, h) { ui.row(modeR, 3, h * 0.4, 54, 10, 480); ui.row(cntR, 3, h * 0.53, 50, 8, 330); startR.w = Math.min(w * 0.7, 280); startR.x = (w - startR.w) / 2; startR.y = h * 0.67; }
 function start() {
   for (const b of B) b.on = false; for (let i = 0; i < 4; i++) score[i] = 0;
-  BN = mode === 'split' ? 3 + count * 2 : 8; t = 0; left = ROUND; endIn = -1; spawnN = 0;
-  for (let i = 0; i < BN; i++) { spawn(B[i], mode === 'split' ? i % count : null); B[i].y = H * (0.25 + 0.7 * (i / BN)); }
+  BN = mode === 'split' ? 3 + count * 2 : mode === 'challenge' ? 1 : 8; t = 0; miss = 0; left = ROUND; endIn = -1; spawnN = 0;
+  for (let i = 0; i < BN; i++) { spawn(B[i], mode === 'split' ? i % count : null); if (mode !== 'challenge') B[i].y = H * (0.25 + 0.7 * (i / BN)); }
   if (handle) handle.stop(); handle = api.track.motion({ grid: [GC, GR], threshold: 22 }, d => { cells = d.cells; });
   state = 'count'; api.hud.set({ title: 'فقاعات', time: String(ROUND), score: mode === 'split' ? '' : '0' }); ui.countdown(3, () => { state = 'play'; });
 }
@@ -53,13 +62,13 @@ function energyAt(b) { // أقوى حركة تحت الفقاعة: حد أقصى
 
 defineGame({
   init(a) {
-    api = a; ui = a.ui; RS = (a.prefs && a.prefs.roundScale) || 1; DIFF = a.prefs ? a.prefs.difficulty : 1; api.view.showCamera(true); ROUND = Math.round(50 * RS); left = ROUND; BSPD = by3(0.6, 1, 1.35); BSZ = by3(1.25, 1, 0.9); POPE = by3(0.06, 0.1, 0.14); const s = api.view.size(); W = s.w; H = s.h; if (W > H) { GC = 12; GR = 8; }
+    api = a; ui = a.ui; RS = (a.prefs && a.prefs.roundScale) || 1; DIFF = a.prefs ? a.prefs.difficulty : 1; api.view.showCamera(true); ROUND = Math.round(50 * RS); left = ROUND; BSPD = by3(0.6, 1, 1.35); BSZ = by3(1.25, 1, 0.9); POPE = by3(0.06, 0.1, 0.14); LIFE0 = by3(3, 1.8, 1.4); LIFEMIN = by3(2, 0.9, 0.7); LIFEDEC = by3(0.02, 0.05, 0.06); const s = api.view.size(); W = s.w; H = s.h; if (W > H) { GC = 12; GR = 8; }
     count = Math.max(2, Math.min(4, api.players.local({ names: ['1', '2'] }).names.length)); layout(W, H); api.hud.set({ title: 'فقاعات' });
   },
   onResize(w, h) { W = w; H = h; layout(w, h); },
   onTap(x, y) {
     if (state !== 'intro') return;
-    for (let i = 0; i < 2; i++) if (ui.hit(modeR[i], x, y)) { mode = i ? 'split' : 'shared'; api.audio.beep(700, 50); }
+    for (let i = 0; i < 3; i++) if (ui.hit(modeR[i], x, y)) { mode = ['shared', 'split', 'challenge'][i]; api.audio.beep(700, 50); }
     if (mode === 'split') for (let i = 0; i < 3; i++) if (ui.hit(cntR[i], x, y)) { count = i + 2; api.audio.beep(700, 50); }
     if (ui.hit(startR, x, y)) start();
   },
@@ -71,7 +80,8 @@ defineGame({
       const b = B[i]; if (!b.on) { spawn(b, mode === 'split' ? i % count : null); continue; }
       b.age += dt; b.y -= b.vy * dt; b.ph += dt * 1.3; const sx = Math.sin(b.ph) * b.sw * dt * 1.3; b.x += sx;
       if (b.y < -b.r * 1.2) { b.on = false; continue; }
-      if (b.age > 0.5 && b.y < H + b.r * 0.2 && energyAt(b) > POPE) popB(b);
+      if (mode === 'challenge') { b.life -= dt; if (b.life <= 0) { b.on = false; miss++; emit(b.x, b.y, b.col, 6, b.r, b.r * 0.06); api.audio.tone({ freq: 260, ms: 140, slide: -80, vol: 0.14 }); continue; } }
+      if (b.age > (mode === 'challenge' ? 0.3 : 0.5) && b.y < H + b.r * 0.2 && energyAt(b) > POPE) popB(b);
     }
     api.hud.set({ time: String(Math.max(0, Math.ceil(left))) });
     if (endIn < 0 && left <= 0) endIn = 0.5;
@@ -89,7 +99,7 @@ defineGame({
     if (state === 'intro') {
       ui.background(ctx, 0.6); ui.bigText(ctx, 'فقاعات', { y: h * 0.17 }); ui.text(ctx, 'لوّح بيدك لتفجير الفقاعات', w / 2, h * 0.26, Math.min(20, w * 0.055), th.fg);
       ui.text(ctx, 'صورتك تظهر خلف الفقاعات على شاشتك فقط', w / 2, h * 0.31, 14, th.mut);
-      ui.button(ctx, modeR[0], 'كلنا معًا', { on: mode === 'shared' }); ui.button(ctx, modeR[1], 'لكل لاعب لونه', { on: mode === 'split' });
+      ui.button(ctx, modeR[0], 'كلنا معًا', { on: mode === 'shared' }); ui.button(ctx, modeR[1], 'لكل لاعب لونه', { on: mode === 'split' }); ui.button(ctx, modeR[2], 'تحدّي', { on: mode === 'challenge' });
       if (mode === 'split') for (let i = 0; i < 3; i++) ui.button(ctx, cntR[i], ui.num(i + 2) + ' لاعبين', { on: count === i + 2 });
       ui.button(ctx, startR, 'ابدأ', { primary: true });
       for (let i = 0; i < 5; i++) { const x = w * (0.12 + i * 0.19), y = h * 0.88 - (i % 2) * h * 0.04; ctx.globalAlpha = 0.5; ctx.strokeStyle = PASTEL[i]; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, w * 0.05 + (i % 3) * 5, 0, TAU); ctx.stroke(); ctx.globalAlpha = 0.12; ctx.fillStyle = PASTEL[i]; ctx.fill(); }
@@ -104,7 +114,8 @@ defineGame({
     } else ui.bigText(ctx, ui.num(score[0]), { y: ui.safe.top + 46, size: h * 0.06, alpha: 0.9 });
     for (let i = 0; i < 12; i++) { const x = (i * 0.37 + 0.1) % 1 * w, y = h - ((t * 14 + i * 97) % (h + 20)); ctx.globalAlpha = 0.25; ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(x, y, 1.5 + (i % 3), 0, TAU); ctx.fill(); } ctx.globalAlpha = 1;
     for (let i = 0; i < BN; i++) {
-      const b = B[i]; if (!b.on) continue; const r = b.r * (1 + Math.sin(t * 2 + i) * 0.025), pop = Math.min(1, b.age * 3);
+      const b = B[i]; if (!b.on) continue; const ch = mode === 'challenge', k = ch ? 0.6 + 0.4 * Math.min(1, b.life / (b.max * 0.75)) : 1, r = b.r * k * (1 + Math.sin(t * 2 + i) * 0.025), pop = Math.min(1, b.age * 3);
+      if (ch) { ctx.strokeStyle = th.fg; ctx.globalAlpha = 0.85 * pop; ctx.lineWidth = Math.max(4, r * 0.08); ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(b.x, b.y, r * 1.18 + 6, -1.5708, -1.5708 + TAU * Math.max(0, b.life) / b.max); ctx.stroke(); ctx.lineCap = 'butt'; ctx.globalAlpha = 1; } // حلقة الوقت المتبقي
       ctx.save(); ctx.globalAlpha = pop;
       ctx.fillStyle = b.col; ctx.globalAlpha = 0.1 * pop; ctx.beginPath(); ctx.arc(b.x, b.y, r * 1.28, 0, TAU); ctx.fill();
       ctx.globalAlpha = (b.gold ? 0.4 : 0.24) * pop; ctx.beginPath(); ctx.arc(b.x, b.y, r, 0, TAU); ctx.fill();

@@ -34,7 +34,7 @@ try {
   const cards = await c.ev(`[...document.querySelectorAll('#list .card')].map(b=>({t:b.querySelector('b').textContent,badge:!!b.querySelector('.badge')}))`);
   ok('بلا شبكة: القائمة تُحمَّل بكل الألعاب', cards.length === rd('games/index.txt').split('\n').filter(s => s && !s.startsWith('zz-')).length, cards);
   const byT = t => cards.find(x => x.t.includes(t));
-  ok('شارة الكاميرا: ظهرت في «ضرب الهواء» ولم تظهر في «صيد الألوان» و«تجمّد»', byT('صيد') && !byT('صيد').badge && byT('تجمّ') && !byT('تجمّ').badge && cards.some(x => x.badge));
+  ok('شارة الكاميرا: ظهرت في «فقاعات» ولم تظهر في «صيد الألوان» و«تجمّد»', byT('صيد') && !byT('صيد').badge && byT('تجمّ') && !byT('تجمّ').badge && cards.some(x => x.badge));
 
   // مراقبة صف الصورة: لا ظهور قبل جاهزية اللعبة
   await c.ev(`window.__obs=[];new MutationObserver(()=>{const s=__engine.state();__obs.push({off:document.getElementById('cam').classList.contains('off'),cam:__engine.cameraOpen(),ready:!!(s&&s.ready),alive:!!(s&&s.alive)})}).observe(document.getElementById('cam'),{attributes:true,attributeFilter:['class']})`);
@@ -44,14 +44,14 @@ try {
   await c.ev(`__engine.stopGame('exit')`); await sleep(300);
   ok('بعد الخروج: المؤشر مخفي والكاميرا مغلقة', (await c.ev(`document.getElementById('camind').hidden`)) && !(await c.ev(`__engine.cameraOpen()`)));
 
-  ok('بلا شبكة: ضرب الهواء (تعرض الصورة بطلبها)', await run('games/mole-air.js'));
-  ok('ضرب الهواء: الصورة ظاهرة + مؤشر «تُعرض على شاشتك فقط»', (await c.ev(`__engine.camShown()`)) && (await c.ev(`document.getElementById('camind').textContent`)).includes('على شاشتك فقط'));
+  ok('بلا شبكة: فقاعات (تعرض الصورة بطلبها)', await run('games/bubble-mirror.js'));
+  ok('فقاعات: الصورة ظاهرة + مؤشر «تُعرض على شاشتك فقط»', (await c.ev(`__engine.camShown()`)) && (await c.ev(`document.getElementById('camind').textContent`)).includes('على شاشتك فقط'));
   await c.ev(`__engine.stopGame('exit')`); await sleep(300);
 
   // الإعداد العام: إطفاؤه يُتجاهل معه showCamera(true)
   await c.ev(`(()=>{const k=document.getElementById('camview');k.checked=false;k.dispatchEvent(new Event('change'))})()`);
   ok('الإعداد يُحفظ في localStorage', (await c.ev(`localStorage.getItem('engine-camview')`)) === '0');
-  await run('games/mole-air.js');
+  await run('games/bubble-mirror.js');
   ok('الإعداد مطفأ: showCamera(true) تُتجاهل والمؤشر «لا تُعرض»', !(await c.ev(`__engine.camShown()`)) && (await c.ev(`document.getElementById('cam').classList.contains('off')`)) && (await c.ev(`document.getElementById('camind').textContent`)).includes('لا تُعرض'));
   await c.ev(`__engine.stopGame('exit')`); await sleep(300);
   const obs = await c.ev(`window.__obs||[]`);

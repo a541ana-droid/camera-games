@@ -4,7 +4,7 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { chrome, BASE, sleep } from './lib.mjs';
 const SHOTS = process.env.SHOTS || tmpdir(); mkdirSync(SHOTS, { recursive: true });
-const ALL = ['color-hunt', 'freeze', 'mole-air', 'multi-lane', 'tilt-balance', 'balloon-bop', 'simon-zones', 'goalie', 'lane-dodger', 'bubble-mirror', 'tilt-maze', 'pad-stars', 'pad-tug', 'pad-quick'];
+const ALL = ['color-hunt', 'freeze', 'mole-air', 'multi-lane', 'tilt-balance', 'balloon-bop', 'hopscotch', 'goalie', 'lane-dodger', 'bubble-mirror', 'tilt-maze', 'pad-stars', 'pad-tug', 'pad-quick'];
 const TAPY = { 'multi-lane': 0.69, 'bubble-mirror': 0.7 }; // زرّ البدء في شاشة الاختيار
 const games = process.argv.slice(2).length ? process.argv.slice(2) : ALL, AT = (process.env.AT || '1.4').split(',').map(Number);
 const c = await chrome({ port: +process.env.CDP_PORT || 9391, size: '1920,1080' });

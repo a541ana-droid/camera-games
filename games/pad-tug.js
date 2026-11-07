@@ -7,6 +7,11 @@
 // @capabilities players.pads audio hud
 // @pads 2-8 1v1 2v2 teams
 // @series no
+// @players 2-8
+// @minutes 1
+// @age 5
+// @play pads
+// @style teams
 // لعبة فرق: api.teams.of(index) يحدّد فريق كل جوال، وapi.end({teamScores}) يبلغ الشاشة بالفائز. لا صراخ ولا كاميرا: إيقاع فقط.
 
 // إعدادات الأسرة (ENGINE.md §3.5): RS يضرب مدة الجولة، DIFF 0 سهل / 1 عادي (سلوك ما قبلها حرفيًا) / 2 صعب. by3(سهل، عادي، صعب).

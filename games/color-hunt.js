@@ -5,6 +5,11 @@
 // @accent #ffc145
 // @engine 0.2
 // @capabilities camera.color audio haptic hud
+// @players 1-4
+// @minutes 2
+// @age 4
+// @play camera
+// @style coop calm
 // سلوك مطابق لنموذج colorhunt/index.html: 5 ألوان، منطقة مركزية، تثبيت 0.6 ث، جولة 20 ث، نقاط 10+الثواني المتبقية.
 
 // إعدادات الأسرة (ENGINE.md §3.5): RS يضرب مدة الجولة، DIFF 0 سهل / 1 عادي (سلوك ما قبلها حرفيًا) / 2 صعب. by3(سهل، عادي، صعب).

@@ -5,6 +5,11 @@
 // @accent #ff8a3d
 // @engine 0.2
 // @capabilities camera.lanes camera.motion audio haptic hud players.local
+// @players 1-4
+// @minutes 2
+// @age 5
+// @play camera
+// @style versus
 // الإحداثيات: api.track.lanes يعطي لكل حارة مركز الحركة cx (إحداثيات الشاشة كلها) فنحوّله إلى موضع داخل الحارة نفسها.
 // عند لاعب واحد تُستعمل api.track.motion على الشاشة كلها. النيازك واحدة لكل الحارات (عدل بين اللاعبين).
 

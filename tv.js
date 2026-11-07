@@ -9,6 +9,7 @@
   const MODEDESC = { free: 'كل لاعب يجمع لنفسه', '1v1': 'لاعبان وجهًا لوجه', '2v2': 'أربعة: فريقان من لاعبين', teams: 'كل اللاعبين في فريقين' };
   const h = (tag, p, ...kids) => { const e = document.createElement(tag); if (p) for (const k in p) { if (k === 'style') e.style.cssText = p[k]; else if (k in e) e[k] = p[k]; else e.setAttribute(k, p[k]); } e.append(...kids.filter(k => k != null)); return e; };
   const fin = (v, a, b, d) => (typeof v === 'number' && isFinite(v) ? Math.min(b, Math.max(a, v)) : d);
+  const r3 = v => Math.round(v * 1000) / 1000, HEX = /^#[0-9a-fA-F]{6}$/, TSH = ['circle', 'square', 'triangle', 'diamond', 'star'];
   const clean = (s, n) => String(s == null ? '' : s).replace(/[\u0000-\u001f\u007f-\u009f​-‏‪-‮⁦-⁩<>]/g, '').trim().slice(0, n);
 
   let S = null; // الجلسة: {code, net, slots[], peerOf Map(peer→slot), mode, game, phase: lobby|playing|result, catalog, last}
@@ -19,7 +20,7 @@
     const names = (await (await fetch('games/index.txt')).text()).split('\n').map(s => s.trim()).filter(s => /^[\w.-]+\.js$/.test(s) && (E.debug || !s.startsWith('zz-')));
     const texts = await Promise.all(names.map(n => fetch('games/' + n).then(r => (r.ok ? r.text() : null), () => null)));
     const out = [];
-    names.forEach((n, i) => { if (texts[i] == null) return; const hd = E.parseHeader(texts[i]); if (!hd.caps.includes('players.pads')) return; out.push({ src: 'games/' + n, title: hd.title || n, desc: hd.desc, accent: E.accentOf(hd).c, ...padsSpec(hd.pads) }); });
+    names.forEach((n, i) => { if (texts[i] == null) return; const hd = E.parseHeader(texts[i]); if (!hd.caps.includes('players.pads')) return; out.push({ src: 'games/' + n, title: hd.title || n, desc: hd.desc, accent: E.accentOf(hd).c, meta: E.meta(hd), ...padsSpec(hd.pads) }); });
     return (S.catalog = out);
   }
   // رأس // @pads 1-8 free 1v1 2v2 teams : المدى وطرق اللعب التي تدعمها اللعبة (الافتراضي 1-8 free)
@@ -34,7 +35,7 @@
   const teamMode = () => S && S.mode !== 'free';
   function open(pre) {
     if (!S) {
-      const code = Net.newCode(); S = { code, net: Net.open({ code, role: 'host' }), slots: [], peerOf: new Map(), mode: 'free', game: null, phase: 'lobby', catalog: null, status: 'loading', at: Date.now(), last: null };
+      const code = Net.newCode(); S = { code, net: Net.open({ code, role: 'host' }), slots: [], peerOf: new Map(), mode: 'free', game: null, phase: 'lobby', evq: [], scrN: 0, catalog: null, status: 'loading', at: Date.now(), last: null };
       const n = S.net;
       n.on('status', st => { S.status = st; paintStatus(); });
       S.statT = setInterval(() => { if (S && S.phase === 'lobby') paintStatus(); }, 2000); // عدد وسطاء المصافحة المتصلين يتغيّر بعد «جاهز»
@@ -54,17 +55,23 @@
       const pid = clean(m.pid, 24); if (!/^[\w-]{6,24}$/.test(pid)) return;
       s = S.slots.find(x => x && x.pid === pid);
       if (!s) { let i = S.slots.findIndex(x => !x || (!x.online && Date.now() - x.left > 120000)); if (i < 0) i = S.slots.length; if (i >= MAXP) return S.net.send(peer, { t: 'full' });
-        s = S.slots[i] = { pid, index: i, name: '', ch: 0, team: -1, online: false, input: [0, 0, 0, 0, 0, 0, 0, 0], raw: [0, 0], acc: [0, 0], base: [0, 0], left: 0, rtt: -1 }; }
+        s = S.slots[i] = { pid, index: i, name: '', ch: 0, team: -1, online: false, input: [0, 0, 0, 0, 0, 0, 0, 0], raw: [0, 0], acc: [0, 0], base: [0, 0], left: 0, rtt: -1, fin: [0, 0, 0], ctl: null, scr: null }; }
       if (s.peer && s.peer !== peer) S.peerOf.delete(s.peer);
       s.peer = peer; s.online = true; S.peerOf.set(peer, s); setProfile(s, m);
       if (teamMode() && s.team < 0) s.team = balanceTeam();
       E.ev('pad-join', { index: s.index, name: s.name });
-      S.net.send(peer, { t: 'welcome', index: s.index, name: s.name, ch: s.ch, team: s.team, phase: S.phase }); changed(); return;
+      S.net.send(peer, { t: 'welcome', index: s.index, name: s.name, ch: s.ch, team: s.team, phase: S.phase });
+      if (S.phase === 'playing') { if (s.ctl) S.net.send(peer, { t: 'ctl', ctl: s.ctl }); if (s.scr) S.net.send(peer, wire(s.scr)); } // عاد أثناء اللعب: أزراره وشاشته كما تركها
+      changed(); return;
     }
     if (!s || s.peer !== peer) return; // لم يعرّف نفسه بعد
     switch (m.t) {
       case 'in': { const a = Array.isArray(m.v) ? m.v : []; const v = s.input;
-        v[0] = fin(a[0], -1, 1, 0); v[1] = fin(a[1], -1, 1, 0); v[2] = a[2] ? 1 : 0; v[3] = a[3] ? 1 : 0; for (let k = 0; k < 2; k++) { const r = fin(a[4 + k], 0, 1e6, -1) | 0; if (r < 0) continue; const d = r >= s.raw[k] ? r - s.raw[k] : r; s.acc[k] += Math.min(d, 20); s.raw[k] = r; } /* عدّاد ضغطات أحادي الاتجاه للمقعد: يتحمّل إعادة تحميل الجوال (يبدأ عدّاده من 0) */ v[6] = fin(a[6], -1, 1, 0); v[7] = fin(a[7], -1, 1, 0); s.inAt = performance.now(); break; }
+        v[0] = fin(a[0], -1, 1, 0); v[1] = fin(a[1], -1, 1, 0); v[2] = a[2] ? 1 : 0; v[3] = a[3] ? 1 : 0; for (let k = 0; k < 2; k++) { const r = fin(a[4 + k], 0, 1e6, -1) | 0; if (r < 0) continue; const d = r >= s.raw[k] ? r - s.raw[k] : r; s.acc[k] += Math.min(d, 20); s.raw[k] = r; } /* عدّاد ضغطات أحادي الاتجاه للمقعد: يتحمّل إعادة تحميل الجوال (يبدأ عدّاده من 0) */ v[6] = fin(a[6], -1, 1, 0); v[7] = fin(a[7], -1, 1, 0); s.fin[0] = a[8] ? 1 : 0; s.fin[1] = fin(a[9], 0, 1, 0); s.fin[2] = fin(a[10], 0, 1, 0); s.inAt = performance.now(); break; }
+      case 'ch': { const c = s.scr; if (S.phase !== 'playing' || !c || c.k !== 'choice' || m.s !== c.s || c.picked >= 0) break; const k = m.k; if (!Number.isInteger(k) || k < 0 || k >= c.items.length) break; // ضغطة واحدة لكل شاشة، ومن الشاشة الحالية فقط
+        c.picked = k; S.evq.push(0, s.index, k, fin(m.ms, 0, 6e5, 0), c.id); break; }
+      case 'fd': { const c = s.scr; if (S.phase !== 'playing' || !c || c.k !== 'touch' || m.s !== c.s) break; const k = m.k; if (!Number.isInteger(k) || !c.items[k] || !c.items[k].goal || c.found.includes(k)) break;
+        c.found.push(k); S.evq.push(1, s.index, k, fin(m.ms, 0, 6e5, 0), c.id); break; }
       case 'set': if (S.phase === 'playing') break; setProfile(s, m); changed(); break;
       case 'ping': S.net.send(peer, { t: 'pong', ts: fin(m.ts, 0, 1e13, 0), rtt: s.rtt }); if (typeof m.rtt === 'number') s.rtt = fin(m.rtt, -1, 1e5, -1); break;
       case 'pick': if (s === leader() && S.phase === 'lobby') { const g = S.catalog && S.catalog.find(x => x.src === m.src); if (g) { S.game = g.src; if (!g.modes.includes(S.mode)) setMode(g.modes[0]); changed(); } } break;
@@ -106,8 +113,8 @@
   }
   function start(dbgSrc) {
     if (!S) return; const g = typeof dbgSrc === 'string' && E.debug ? { src: dbgSrc, title: dbgSrc } : (reason() ? null : S.catalog.find(x => x.src === S.game)); if (!g) return;
-    S.phase = 'playing'; S.last = null;
-    for (const p of S.slots) if (p) { p.input.fill(0); p.base = p.acc.slice(); } // كل لعبة تبدأ عدّادَي الضغط من 0 (نسبيًا)، فلا تضيع ضغطة بعد البدء ولا تظهر ضغطات من لعبة سابقة
+    S.phase = 'playing'; S.last = null; S.evq = [];
+    for (const p of S.slots) if (p) { p.input.fill(0); p.base = p.acc.slice(); p.fin.fill(0); p.ctl = null; p.scr = null; } // كل لعبة تبدأ عدّادَي الضغط من 0 (نسبيًا)، فلا تضيع ضغطة بعد البدء ولا تظهر ضغطات من لعبة سابقة
     for (const p of online()) S.net.send(p.peer, { t: 'play', title: g.title, ctl: { stick: true, a: 'اضغط', b: '', tilt: false } });
     E.ev('tv-start', { game: g.src, mode: S.mode, n: online().length });
     E.startGame(g.src);
@@ -212,6 +219,13 @@
     lobby(); changed(); if (why && why !== 'exit') { const w = h('p', { className: 'warn tvwarn' }, String(why).slice(0, 200)); view().prepend(w); setTimeout(() => w.remove(), 8000); }
   }
 
+  // شاشة لكل جوال: تُحفظ في المقعد (فيستعيدها الجوال إن عاد) وتُرسل برقم تسلسل؛ ردّ الجوال يُقبل فقط إن حمل رقم الشاشة الحالية
+  function screen(i, sc) {
+    if (!S || S.phase !== 'playing') return;
+    for (const p of S.slots) if (p && (i < 0 || p.index === i)) { const m = sc ? Object.assign({ t: 'scr', s: ++S.scrN }, sc, sc.k === 'touch' ? { found: [] } : {}) : null; p.scr = m; p.fin.fill(0);
+      if (p.online) S.net.send(p.peer, m ? wire(m) : { t: 'scr', k: '', s: ++S.scrN }); }
+  }
+  const wire = m => { const o = Object.assign({}, m); delete o.id; return o; }; // picked/found تُرسل فيعرض الجوال العائد ما اختاره ووجده
   // ---------- جسر المحرك (Pads) ----------
   window.Pads = {
     active: () => !!S, playing: () => !!S && S.phase === 'playing', mode: () => (S ? S.mode : 'free'),
@@ -219,7 +233,14 @@
     inputs() { const out = []; if (S) for (const p of S.slots) if (p) { const st = p.online && performance.now() - (p.inAt || 0) < 1500; out.push(p.index, st ? p.input[0] : 0, st ? p.input[1] : 0, st ? p.input[2] : 0, st ? p.input[3] : 0, p.acc[0] - p.base[0], p.acc[1] - p.base[1], st ? p.input[6] : 0, st ? p.input[7] : 0); } return out; },
     say(i, text) { if (!S) return; const t = clean(text, 60); for (const p of online()) if (i < 0 || p.index === i) S.net.send(p.peer, { t: 'say', text: t }); },
     vibrate(i, ms) { if (!S) return; ms = fin(ms, 1, 300, 40) | 0; for (const p of online()) if (i < 0 || p.index === i) S.net.send(p.peer, { t: 'vib', ms }); },
-    controls(i, o) { if (!S) return; const c = { stick: o.stick !== false, a: clean(o.a, 12), b: clean(o.b, 12), tilt: !!o.tilt }; for (const p of online()) if (i < 0 || p.index === i) S.net.send(p.peer, { t: 'ctl', ctl: c }); },
+    controls(i, o) { if (!S) return; const c = { stick: o.stick !== false, a: clean(o.a, 12), b: clean(o.b, 12), tilt: !!o.tilt }; for (const p of S.slots) if (p && (i < 0 || p.index === i)) { p.ctl = c; if (p.online) S.net.send(p.peer, { t: 'ctl', ctl: c }); } },
+    // شاشات الجوال (0.6، ENGINE.md §3.4.1): اختيار (2–4 أزرار) أو لمس/مصباح. شاشة واحدة لكل جوال؛ null يعيد الذراع. كل حقل يُنقّى هنا من جديد (اللعبة غير موثوقة)
+    choices(i, o) { screen(i, o && Array.isArray(o.items) && o.items.length >= 2 ? { k: 'choice', id: fin(o.id, -1e9, 1e9, 0), prompt: clean(o.prompt, 40), picked: -1,
+      items: o.items.slice(0, 4).map(x => ({ text: clean(x && x.text, 16), color: HEX.test(x && x.color || '') ? x.color : '', shape: Number.isInteger(x && x.shape) && x.shape >= 0 && x.shape <= 3 ? x.shape : -1 })) } : null); },
+    touch(i, o) { screen(i, o && typeof o === 'object' ? { k: 'touch', id: fin(o.id, -1e9, 1e9, 0), dark: !!o.dark, light: fin(o.light, 0.05, 0.5, 0.16), hint: !!o.hint, found: [],
+      items: (Array.isArray(o.items) ? o.items.slice(0, 20) : []).map(x => ({ x: r3(fin(x && x.x, 0, 1, 0.5)), y: r3(fin(x && x.y, 0, 1, 0.5)), r: r3(fin(x && x.r, 0.02, 0.3, 0.06)), shape: TSH.includes(x && x.shape) ? x.shape : 'circle', color: HEX.test(x && x.color || '') ? x.color : '#ffffff', text: clean(x && x.text, 4), goal: !!(x && x.goal) })) } : null); },
+    fingers() { const out = []; if (S && S.phase === 'playing') for (const p of S.slots) if (p && p.scr && p.scr.k === 'touch') { const st = p.online && performance.now() - (p.inAt || 0) < 1500; out.push(p.index, st ? p.fin[0] : 0, p.fin[1], p.fin[2]); } return out; },
+    events() { if (!S || !S.evq.length) return []; const e = S.evq; S.evq = []; return e; },
     _play: src => start(src), // للاختبارات فقط (?debug=1): يبدأ لعبة ليست في القائمة
     ended, stopped, open, close, onChange: () => E.padsChanged && E.padsChanged(),
     state: () => S && { code: S.code, phase: S.phase, mode: S.mode, game: S.game, kind: S.net.kind, status: S.status, url: S ? padUrl() : '', last: S.last, pads: window.Pads.snapshot(), reason: reason(), rtt: S.slots.filter(Boolean).map(p => p.rtt) }

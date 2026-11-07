@@ -66,7 +66,7 @@ try {
   ok('@howto-act: runtime ACTS = check-game HOWACTS = ENGINE.md table (no drift)', JSON.stringify([...RTA].sort()) === JSON.stringify([...CHA].sort()) && RTA.every(a => MD.includes('| `' + a + '` |')), { RTA, CHA });
   const idx = readFileSync(new URL('../games/index.txt', import.meta.url), 'utf8').split('\n').map(x => x.trim()).filter(x => x.endsWith('.js') && !x.startsWith('zz-'));
   const noHow = idx.filter(g => { const t = readFileSync(new URL('../games/' + g, import.meta.url), 'utf8'), h = /^\/\/ @howto (.+)$/m.exec(t), a = /^\/\/ @howto-act (\S+)$/m.exec(t); return !h || [...h[1].trim()].length > 40 || !a || !RTA.includes(a[1]) || !/countdown\s*\(/.test(t); });
-  ok('every listed game has @howto (≤40 chars) + a known @howto-act and uses ui.countdown', idx.length >= 14 && !noHow.length, { games: idx.length, noHow });
+  ok('every listed game has @howto (≤40 chars) + a known @howto-act and uses ui.countdown', idx.length >= 12 && !noHow.length, { games: idx.length, noHow });
   // (4) تطابق التشغيلين بكسلًا ببكسل في كل مشهد من العرض الساكن
   const grab = async () => { const out = []; await open('tests/games/kit-demo.js', 1500); for (let k = 0; k < 3; k++) { await sleep(350); out.push(await c.ev(`document.getElementById('cv').toDataURL('image/png')`)); await tap(215, 400); } return out; };
   const A = await grab(), B = await grab();

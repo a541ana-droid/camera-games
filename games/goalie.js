@@ -5,6 +5,11 @@
 // @accent #3ddc97
 // @engine 0.2
 // @capabilities camera.motion camera.lanes audio haptic hud players.local
+// @players 1-4
+// @minutes 1
+// @age 5
+// @play camera
+// @style versus
 // لاعب واحد: شبكة حركة 3×3 (الصدّ بنشاط الخلية أو جارتها). لاعبان فأكثر: حارات، لكل حارة ثلاثة ارتفاعات ويُقاس ارتفاع الحركة من مركزها.
 
 // إعدادات الأسرة (ENGINE.md §3.5): RS يضرب مدة الجولة، DIFF 0 سهل / 1 عادي (سلوك ما قبلها حرفيًا) / 2 صعب. by3(سهل، عادي، صعب).

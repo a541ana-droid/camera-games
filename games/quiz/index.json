@@ -1,0 +1,119 @@
+{
+ "schema": "camera-games.quiz-index/1",
+ "version": "2026-11-07",
+ "note": "بنك بداية. كل الأسئلة معلومات ثابتة غير زمنية. المحتوى بيانات فقط.",
+ "packs": [
+  {
+   "id": "sci",
+   "name": "علوم",
+   "description": "تجارب وظواهر وعناصر",
+   "count": 18,
+   "kid": false
+  },
+  {
+   "id": "geo",
+   "name": "جغرافيا",
+   "description": "دول وعواصم وقارات وبحار",
+   "count": 19,
+   "kid": false
+  },
+  {
+   "id": "ani",
+   "name": "حيوانات",
+   "description": "عالم الحيوان والطيور",
+   "count": 20,
+   "kid": false
+  },
+  {
+   "id": "spc",
+   "name": "الفضاء",
+   "description": "الكواكب والنجوم ورحلات الفضاء",
+   "count": 19,
+   "kid": false
+  },
+  {
+   "id": "bod",
+   "name": "جسم الإنسان",
+   "description": "أعضاء وعظام وصحة",
+   "count": 18,
+   "kid": false
+  },
+  {
+   "id": "spo",
+   "name": "رياضة",
+   "description": "قواعد وبطولات ثابتة",
+   "count": 17,
+   "kid": false
+  },
+  {
+   "id": "his",
+   "name": "تاريخ وحضارات",
+   "description": "حضارات وعلماء وأحداث كبرى",
+   "count": 17,
+   "kid": false
+  },
+  {
+   "id": "food",
+   "name": "طعام وشراب",
+   "description": "مكونات وأطباق ونباتات غذائية",
+   "count": 18,
+   "kid": false
+  },
+  {
+   "id": "inv",
+   "name": "اختراعات",
+   "description": "مخترعون وأدوات",
+   "count": 17,
+   "kid": false
+  },
+  {
+   "id": "lng",
+   "name": "لغة وكلمات",
+   "description": "عربي وإنجليزي ومفردات",
+   "count": 18,
+   "kid": false
+  },
+  {
+   "id": "mth",
+   "name": "ألغاز رياضية",
+   "description": "حساب وأشكال وألغاز",
+   "count": 20,
+   "kid": false
+  },
+  {
+   "id": "isl",
+   "name": "معلومات إسلامية عامة",
+   "description": "معلومات ثابتة ومتفق عليها",
+   "count": 20,
+   "kid": false
+  },
+  {
+   "id": "nat",
+   "name": "الطبيعة والبيئة",
+   "description": "نبات وطقس وأرض",
+   "count": 17,
+   "kid": false
+  },
+  {
+   "id": "cul",
+   "name": "السعودية والعالم العربي",
+   "description": "تراث ومدن ومعالم",
+   "count": 17,
+   "kid": false
+  },
+  {
+   "id": "tech",
+   "name": "تقنية وأمان رقمي",
+   "description": "حاسوب وإنترنت وسلامة",
+   "count": 16,
+   "kid": false
+  },
+  {
+   "id": "kid",
+   "name": "للصغار: صور",
+   "description": "ثلاثة اختيارات بالصور، بلا قراءة طويلة",
+   "count": 20,
+   "kid": true
+  }
+ ]
+}

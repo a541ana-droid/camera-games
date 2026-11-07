@@ -1,12 +1,12 @@
 'use strict';
 // المضيف: يملك الكاميرا والصوت والحلقة والحارس والرسم. كود اللعبة يعمل في Web Worker قابل للإنهاء (terminate) ولا يعمل أي سطر منه في هذا الخيط. لا ثقة بشيء قادم منه.
 (() => {
-  const VERSION = '0.5.3', MAJOR = 0, BUDGET_MS = 8, HB_TIMEOUT = 2000, BOOT_TIMEOUT = 4000, ALIVE_TIMEOUT = 2500, MAX_GAME_BYTES = 200000;
+  const VERSION = '0.6.1', MAJOR = 0, BUDGET_MS = 8, HB_TIMEOUT = 2000, BOOT_TIMEOUT = 4000, ALIVE_TIMEOUT = 2500, MAX_GAME_BYTES = 200000;
   const KNOWN = ['camera.view', 'camera.color', 'camera.motion', 'camera.lowres', 'camera.calibrate', 'audio', 'haptic', 'hud', 'players.local', 'camera.lanes', 'camera.playercolors', 'audio.mic', 'motion.device', 'players.pads'];
   const PLANNED = ['qr', 'players.network', 'hand', 'pose'];
   const MAX_MSG_PER_S = 400, MAX_BYTES = new URLSearchParams(location.search).get('debug') === '1' ? 8192 : 2048, MAX_TRACKS = 4, MEM_LIMIT = 192e6;
   const memDetail = v => 'طلبت نحو ' + Math.round(n(v, 0, 1e12, 0) / 1e6) + ' ميغابايت.';
-  const RATE = { 'mic.start': 5, 'audio.tone': 30, 'audio.melody': 10, haptic: 10, hud: 30, 'pads.say': 20, 'pads.vib': 20, 'pads.ctl': 10 };
+  const RATE = { 'mic.start': 5, 'audio.tone': 30, 'audio.melody': 10, haptic: 10, hud: 30, 'pads.say': 20, 'pads.vib': 20, 'pads.ctl': 10, 'pads.choices': 30, 'pads.touch': 30 };
   const $ = id => document.getElementById(id);
   const vq = u => u + (u.includes('?') ? '&' : '?') + 'v=' + VERSION.replace(/\./g, ''); // ملفات يجلبها المحرك بنفسه تحمل رقم نسخته (كما في index.html) فلا يخدمها مخزن HTTP من نسخة أخرى؛ عامل الخدمة يتجاهل الاستعلام
   const qs = new URLSearchParams(location.search), DEBUG = qs.get('debug') === '1', ENDMAX = DEBUG ? 4000 : 300; // نص نهاية اللعبة: 300 حرفًا (4000 في ?debug=1 كي تحمل الاختبارات نتائجها)
@@ -36,7 +36,7 @@
   };
 
   function parseHeader(text) {
-    const h = { title: '', desc: '', engine: '', caps: [], assets: '', series: '', accent: '', pads: '', howto: '', 'howto-act': '' };
+    const h = { title: '', desc: '', engine: '', caps: [], assets: '', series: '', accent: '', pads: '', howto: '', 'howto-act': '', players: '', minutes: '', age: '', play: '', style: '', pack: '' };
     for (const line of text.split('\n', 40)) {
       const m = /^\/\/\s*@([\w-]+)\s*(.*)$/.exec(line.trim()); if (!m) continue;
       if (m[1] === 'capabilities') h.caps = m[2].split(/\s+/).filter(Boolean); else if (m[1] in h) h[m[1]] = m[2].trim();
@@ -51,6 +51,16 @@
     return '';
   }
 
+  // بيانات الفلاتر (0.6، ENGINE.md §1.1): @players @minutes @age @play @style. الغائب أو غير الصالح ⇒ null (لا يُستبعد في الفلتر)، و@play يُشتقّ من القدرات
+  const PLAYS = ['camera', 'pads', 'device'];
+  const STYLES = ['coop', 'versus', 'teams', 'calm'];
+  function meta(h) {
+    const pm = /^(\d{1,2})(?:\s*-\s*(\d{1,2}))?$/.exec(h.players || ''), pd = /(\d)\s*-\s*(\d)/.exec(h.pads || ''), mn = +h.minutes, ag = +h.age;
+    let players = pm ? [+pm[1], +(pm[2] || pm[1])] : null; if (players && !(players[0] >= 1 && players[1] >= players[0] && players[1] <= 16)) players = null;
+    if (!players && h.caps.includes('players.pads')) players = pd ? [+pd[1], +pd[2]] : [1, 8];
+    const play = PLAYS.includes(h.play) ? h.play : h.caps.includes('players.pads') ? 'pads' : h.caps.some(c => c.startsWith('camera.')) ? 'camera' : 'device';
+    return { players, minutes: mn >= 1 && mn <= 60 ? Math.round(mn) : null, age: Number.isInteger(ag) && ag >= 3 && ag <= 18 ? ag : null, play, style: String(h.style || '').split(/[\s|,]+/).filter(x => STYLES.includes(x)) };
+  }
   // بصمة اللعبة (// @accent #rrggbb): غير صالحة أو قليلة التباين مع الخلفية الداكنة ⇒ لون المحرك الافتراضي (DESIGN.md §2). تُحسب منها درجتان للغلاف.
   const BRAND = '#7c6cff', hex2 = c => [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16)), mix = (c, t, k) => '#' + hex2(c).map((v, i) => Math.round(v + (t[i] - v) * k).toString(16).padStart(2, '0')).join('');
   const arn = String; // أرقام 0-9 كبقية الواجهة
@@ -194,7 +204,7 @@
       const w = stage.clientWidth, h = stage.clientHeight, m = { t: 'tick', ts };
       if (w !== S.sw || h !== S.sh) { S.sw = w; S.sh = h; Draw.resize(w, h, window.devicePixelRatio); m.w = w; m.h = h; }
       if (S.pq.length) { m.p = S.pq; S.pq = []; }
-      if (S.pads) m.pi = Pads.inputs(); // مدخلات الأذرع: أرقام فقط، مقطوعة الحدود في tv.js (ENGINE.md §3.4)
+      if (S.pads) { m.pi = Pads.inputs(); const f = Pads.fingers(), e = Pads.events(); if (f.length) m.pf = f; if (e.length) m.pe = e; } // مدخلات الأذرع والإصبع وأحداث الشاشات: أرقام فقط، مقطوعة الحدود في tv.js (ENGINE.md §3.4، §3.4.1)
       S.inflight = true; S.tickAt = performance.now(); S.port.postMessage(m);
     }
   }
@@ -271,6 +281,8 @@
       case 'haptic': if (!cap('haptic')) return; if (PR.haptic && navigator.vibrate) navigator.vibrate(n(m.ms, 1, 200, 30)); break;
       case 'pads.say': case 'pads.vib': case 'pads.ctl': { if (!cap('players.pads')) return; const i = n(m.i, -1, 7, -2); if (i === -2 || (i | 0) !== i) return violate('pad-index'); if (!window.Pads) return;
         if (m.t === 'pads.say') Pads.say(i, String(m.text == null ? '' : m.text).slice(0, 60)); else if (m.t === 'pads.vib') { if (PR.haptic) Pads.vibrate(i, n(m.ms, 1, 300, 40)); } else Pads.controls(i, { stick: m.stick !== false, a: String(m.a == null ? '' : m.a).slice(0, 12), b: String(m.b == null ? '' : m.b).slice(0, 12), tilt: !!m.tilt }); break; }
+      case 'pads.choices': case 'pads.touch': { if (!cap('players.pads')) return; const i = n(m.i, -1, 7, -2); if (i === -2 || (i | 0) !== i) return violate('pad-index'); if (m.spec != null && typeof m.spec !== 'object') return violate('pad-screen'); if (!window.Pads) return;
+        if (m.t === 'pads.choices') Pads.choices(i, m.spec); else Pads.touch(i, m.spec); break; } // تنقية الحقول في tv.js (حدّ الثقة نفسه للجوال واللعبة)
       case 'end': ev('end', { score: n(m.score, -1e9, 1e9, 0), text: String(m.text || '').slice(0, ENDMAX), scores: m.scores, ranks: m.ranks, teamScores: m.teamScores });
         { const sc = n(m.score, -1e9, 1e9, 0), tx = String(m.text || '').slice(0, 300), src = S.src, ttl = S.head && S.head.title || '', pads = S.pads && PADS(); stopGame('end', false);
           if (SER()) { Series.result(m); break; }
@@ -374,7 +386,8 @@
       if (S.caps.has('audio') && soundOn()) audioCtx();
       const rt = await loadRuntime(); await loadLauncher(); if (!S || S.id !== id) return;
       S.assetInfo = await loadAssets(head, src); if (!S || S.id !== id) return;
-      applyPrefs(); const spec = { prefs: gamePrefs(), accent: head.accent ? accentOf(head).c : '', howto: howPref() && head.howto ? { text: head.howto.slice(0, 60), act: String(head['howto-act'] || '').slice(0, 20) } : null, memmax: MEM_LIMIT, players: SER() ? Series.names() : null, teams: teamSpec(head), pads: head.caps.includes('players.pads') && window.Pads ? Pads.snapshot() : null, endmax: ENDMAX, nogate: DEBUG && qs.get('nogate') === '1', version: VERSION, maxe: Draw.MAXE, cmds: Draw.spec(), defaults: Draw.DEFAULTS, mt: Draw.measureTables() };
+      const pk = await packFor(src, head); if (!S || S.id !== id) return;
+      applyPrefs(); const spec = { pack: pk, prefs: gamePrefs(), accent: head.accent ? accentOf(head).c : '', howto: howPref() && head.howto ? { text: head.howto.slice(0, 60), act: String(head['howto-act'] || '').slice(0, 20) } : null, memmax: MEM_LIMIT, players: SER() ? Series.names() : null, teams: teamSpec(head), pads: head.caps.includes('players.pads') && window.Pads ? Pads.snapshot() : null, endmax: ENDMAX, nogate: DEBUG && qs.get('nogate') === '1', version: VERSION, maxe: Draw.MAXE, cmds: Draw.spec(), defaults: Draw.DEFAULTS, mt: Draw.measureTables() };
       S.wsrc = 'self.__SPEC=' + JSON.stringify(spec) + ';\n' + rt; S.gsrc = ';(function(){\n' + text + '\n})();';
       showCam(false); $('ov').hidden = true;
       S.sw = stage.clientWidth; S.sh = stage.clientHeight; Draw.resize(S.sw, S.sh, window.devicePixelRatio);
@@ -425,35 +438,56 @@
   // ---------- القائمة ----------
   const NEED = { motion: 'يحتاج مستشعر حركة — غير موجود في هذا الجهاز', camera: 'يحتاج كاميرا — غير موجودة في هذا الجهاز' }, cards = [];
   const reasonFor = h => { const p = Sensors.last; if (!p) return ''; if (h.caps.includes('motion.device') && !p.motion) return NEED.motion; if (h.caps.some(c => c.startsWith('camera.')) && !p.camera && !($('synth').checked && window.DebugSynth)) return NEED.camera; return ''; };
-  function applyAvail() { for (const c of cards) { const r = reasonFor(c.h); c.b.disabled = !!r; c.n.textContent = r; c.n.hidden = !r; } E.devices = Sensors.last; }
+  E.addCard = c => { cards.push(c); const r = reasonFor(c.h); c.b.disabled = !!r; c.n.textContent = r; c.n.hidden = !r; }; E.reasonFor = h => reasonFor(h);
+  function applyAvail() { for (const c of cards) { const r = reasonFor(c.h); c.b.disabled = !!r; c.n.textContent = r; c.n.hidden = !r; } E.devices = Sensors.last; if (E.onAvail) E.onAvail(); }
+  // الصور المعتمدة فقط (قرار المالك، DESIGN.md §7): أغلفة هذه الألعاب الخمس. غيرها يأخذ غلافًا هندسيًا مولَّدًا بلون البصمة، بلا وجوه ولا شخصيات.
+  const COVERS = ['color-hunt', 'freeze', 'mole-air', 'multi-lane', 'tilt-balance'];
+  // تشغيل لعبة من بطاقة أو من «نلعب الآن؟»: ألعاب الجوالات تفتح ردهة التلفاز لتلك اللعبة؛ الحركة تطلب الإذن من النقرة نفسها
+  function launchGame(src, h, pack) {
+    if (pack !== undefined) pendingPack = pack ? { src, pack } : null;
+    if (h && h.caps.includes('players.pads') && window.Pads) return Pads.open(src);
+    if (h && h.caps.includes('motion.device')) Sensors.permit(); startGame(src);
+  }
+  // حزم الأسئلة (0.6.1، ENGINE.md §3.6): المضيف وحده يقرأ الحزمة (ملف رسمي أو فئة العائلة من تخزين الجهاز)، ينظّفها، يخلط ترتيب أسئلتها في كل تشغيل، ويمرّرها بيانات فقط.
+  let pendingPack = null; // {src, pack:{id,title,questions}} آخر فئة اختيرت من بلاطات «مسابقات» لهذه اللعبة؛ تبقى لـ«إعادة»
+  function shuffled(a) { const o = a.slice(); for (let i = o.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [o[i], o[j]] = [o[j], o[i]]; } return o; }
+  function apiPack(p) {
+    if (!p || !Array.isArray(p.questions)) return null;
+    const qs = shuffled(p.questions).slice(0, 200).map(x => { const o = { q: String(x.q).slice(0, 140), choices: x.choices.slice(0, 4).map(c => String(c).slice(0, 60)), answer: x.answer | 0 }; if (x.explain) o.explain = String(x.explain).slice(0, 200); if (x.kid === true) o.kid = true; return o; });
+    return qs.length ? { id: String(p.id || '').slice(0, 40), title: String(p.title || p.name || '').slice(0, 40), questions: qs } : null;
+  }
+  // لعبة تستهلك الحزم: تعلن // @pack quiz (ENGINE.md §3.6). games/quiz.js تُعامَل كذلك حتى لو غاب السطر (كُتبت بالتوازي مع هذا العقد).
+  const wantsPack = (head, src) => !!head.pack || src === 'games/quiz.js';
+  async function packFor(src, head) {
+    if (pendingPack && typeof src === 'string' && pendingPack.src === src) return apiPack(pendingPack.pack);
+    if (wantsPack(head, src) && window.QuizPacks) { try { return apiPack(await QuizPacks.mix()); } catch (e) { return null; } }
+    return null;
+  }
+  E.launch = launchGame; E.apiPack = apiPack; E.packPending = () => pendingPack && { src: pendingPack.src, id: pendingPack.pack.id };
   async function buildMenu() {
     $('ver').textContent = 'المحرك ' + VERSION; $('facing').onchange = e => { facing = e.target.value; };
     if (DEBUG) $('synthL').hidden = false;
     $('camview').checked = camPref(); $('camview').onchange = e => { setCamPref(e.target.checked); if (!e.target.checked) showCam(false); };
     $('howto').checked = howPref(); $('howto').onchange = e => setHowPref(e.target.checked);
     settingsUi();
-    const list = $('list'); list.textContent = '';
+    const list = $('home');
     if (crashed) { const w = document.createElement('p'); w.className = 'warn'; w.textContent = 'أُعيد تحميل الصفحة أثناء لعبة «' + crashed.t + '» — غالبًا استهلكت ذاكرة الجهاز. لم تُشغَّل تلقائيًا؛ اخترها من جديد إن أردت.'; list.before(w); diag('crash-recovered', crashed.t); }
     try {
+      E.menuGames = []; // بيانات كل لعبة للفلاتر (0.6): {src, title, meta}
       const names = (await (await fetch(vq('games/index.txt'))).text()).split('\n').map(s => s.trim()).filter(s => /^[\w.-]+\.js$/.test(s) && (DEBUG || !s.startsWith('zz-'))); // zz-* ألعاب اختبار للمطوّر: تظهر في ?debug=1 فقط
-      // تُجلب رؤوس الألعاب معًا لا واحدة بعد الأخرى (على شبكة بطيئة كانت 6 ألعاب × ~3ث قبل ظهور القائمة)؛ لعبة تعذّر جلبها تُتخطّى ولا تُسقط القائمة كلها
+      // تُجلب رؤوس الألعاب معًا لا واحدة بعد الأخرى؛ لعبة تعذّر جلبها تُتخطّى ولا تُسقط القائمة كلها
       const texts = await Promise.all(names.map(nm => fetch(vq('games/' + nm)).then(r => r.ok ? r.text() : null, () => null)));
+      const entries = [];
       for (let gi = 0; gi < names.length; gi++) {
         const nm = names[gi]; if (texts[gi] == null) continue;
-        const h = parseHeader(texts[gi]), b = document.createElement('button'), ac = accentOf(h), mk = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt) e.textContent = txt; return e; };
-        b.className = 'card'; b.style.setProperty('--ac', ac.c); b.style.setProperty('--ac-hi', ac.hi); b.style.setProperty('--ac-lo', ac.lo);
-        const cover = mk('span', 'cover'), ic = capIcons(h.caps), art = mk('span', 'art', ACTICON[h['howto-act']] || (ic.length ? ic[0][0] : '🎮')); art.setAttribute('aria-hidden', 'true');
-        const img = new Image(); img.alt = ''; img.decoding = 'async'; img.className = 'pic'; img.onload = () => cover.classList.add('has'); img.onerror = () => img.remove(); img.src = 'games/' + nm.replace(/\.js$/, '') + '.cover.jpg'; cover.append(art, img);
-        const body = mk('span', 'body'), t = mk('b', '', h.title || nm), d = mk('small', '', h.desc), caps = mk('span', 'caps'), nt = mk('em'); nt.hidden = true;
-        for (const [i, n] of ic) { const c = mk('span', 'cap', i); c.title = n; c.setAttribute('role', 'img'); c.setAttribute('aria-label', n); caps.append(c); }
-        if (h.caps.includes('players.pads')) caps.append(mk('span', 'badge', '📱 كل لاعب بجواله')); body.append(t, d, caps); if (h.caps.includes('camera.view')) caps.append(mk('span', 'badge', '📷 تعرض صورتك على شاشتك')); body.append(nt); b.append(cover, body); cards.push({ b, h, n: nt });
-        b.onclick = () => { if (h.caps.includes('players.pads') && window.Pads) return Pads.open('games/' + nm); if (h.caps.includes('motion.device')) Sensors.permit(); startGame('games/' + nm); }; list.append(b);
+        const h = parseHeader(texts[gi]), mt = meta(h), src = 'games/' + nm; E.menuGames.push({ src, title: h.title || nm, meta: mt });
+        entries.push({ src, name: nm.replace(/\.js$/, ''), h, meta: mt, accent: accentOf(h), icons: capIcons(h.caps), cover: COVERS.includes(nm.replace(/\.js$/, '')) ? src.replace(/\.js$/, '.cover.jpg') : '', quiz: wantsPack(h, src) });
       }
-    } catch (e) { list.textContent = 'تعذّر تحميل قائمة الألعاب'; }
+      E.menuEntries = entries; if (E.onMenu) E.onMenu(entries); // home.js يبني الأقسام والبطاقات (0.6.1)
+    } catch (e) { list.prepend('تعذّر تحميل قائمة الألعاب'); }
     await Sensors.probe(); applyAvail(); $('synth').addEventListener('change', applyAvail);
     $('pick').onclick = () => $('file').click();
     $('setBtn').onclick = () => openSettings();
-    $('playBtn').onclick = () => { const c = cards.find(x => !x.b.disabled); list.scrollIntoView({ block: 'start' }); if (c) c.b.focus({ preventScroll: true }); };
     $('file').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if (f) { $('code').value = await f.text(); $('mkRun').click(); } };
     maker();
   }
@@ -517,7 +551,7 @@
   const mineGet = () => { try { const a = JSON.parse(localStorage.getItem(MINE) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
   const mineSet = a => { try { localStorage.setItem(MINE, JSON.stringify(a)); return true; } catch (e) { return false; } };
   function renderMine() {
-    const box = $('mine'), a = mineGet(); box.textContent = ''; $('myH').hidden = !a.length;
+    const box = $('mine'), a = mineGet(); box.textContent = ''; $('mineSec').hidden = !a.length;
     for (const g of a) {
       const h = parseHeader(g.text), ac = accentOf(h), b = document.createElement('div'), go = document.createElement('button'), del = document.createElement('button');
       b.className = 'card'; b.style.setProperty('--ac', ac.c); b.style.borderInlineStart = '6px solid ' + ac.c;
@@ -558,7 +592,7 @@
   if (window.Pads !== undefined) { /* tv.js يُحمَّل بعد المحرك */ }
   const padsChanged = () => { if (S && S.ready && S.pads) S.port.postMessage({ t: 'pads', list: Pads.snapshot() }); };
   E.padsChanged = padsChanged; E.ev = ev;
-  E.mode = () => S && S.mode; E.fellBack = () => fellBack; E.startGame = startGame; E.show = show; E.stopGame = stopGame; E.state = () => S; E.parseHeader = parseHeader; E.accentOf = accentOf; E.audio = () => actx; E.cameraOpen = () => !!stream; E.camShown = () => camShown && !cam.classList.contains('off'); E.setFacing = f => { facing = f; }; E.sensors = Sensors;
+  E.mode = () => S && S.mode; E.fellBack = () => fellBack; E.startGame = startGame; E.show = show; E.stopGame = stopGame; E.state = () => S; E.parseHeader = parseHeader; E.meta = meta; E.accentOf = accentOf; E.audio = () => actx; E.cameraOpen = () => !!stream; E.camShown = () => camShown && !cam.classList.contains('off'); E.setFacing = f => { facing = f; }; E.sensors = Sensors;
   // تثبيت التطبيق: أندرويد/كروم يعطي حدث beforeinstallprompt فنثبّت بضغطة؛ آيفون لا يسمح بذلك فنشرح الخطوتين. يختفي داخل التطبيق المثبّت وبعد «لاحقًا».
   (() => {
     const box = $('inst'), msg = $('instMsg'), go = $('instGo'); let ev = null;

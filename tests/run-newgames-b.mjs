@@ -1,4 +1,4 @@
-// الألعاب الثلاث (تفادى! / فقاعات / متاهة الميلان): كل لعبة تُحمَّل وتُبدأ بلمسة حقيقية وتُغذّى بمدخل اصطناعي (يد اصطناعية / ميل اصطناعي)
+// الألعاب الثلاث (تفادى! / فقاعات بأوضاعها الثلاثة ومنها «تحدّي» المدموج من مطرقة الهواء / متاهة الميلان بمرحلة التمرين المدموجة من كرة الميزان): كل لعبة تُحمَّل وتُبدأ بلمسة حقيقية وتُغذّى بمدخل اصطناعي (يد اصطناعية / ميل اصطناعي)
 // وتنتهي بـapi.end ونتيجة منتهية بلا أخطاء صفحة. تُشغَّل المتغيّرات بالتوازي (كل واحد في كروم مستقل) وتُحفظ لقطة منتصف اللعب في مجلد النظام المؤقت.
 // المتغيّرات المتسلسلة (series) تلتقط ردّ المضيف Series.result لفحص scores/ranks لكل لاعب.
 import { writeFileSync } from 'node:fs';
@@ -17,7 +17,9 @@ const VAR = [
   { id: 'bubbles-phone-shared', game: 'games/bubble-mirror.js', vp: [390, 844], hand: { x: 0.5, y: 0.5, r: 0.12, ax: 0.35, ay: 0.3, hz: 1.2 }, minScore: 3,
     taps: (W, H) => [[W / 2, H * 0.67 + 29]], shotAt: 12 },
   { id: 'bubbles-tv-series3-split', game: 'games/bubble-mirror.js', vp: [1920, 1080], series: ['أ', 'ب', 'ج'], hand: { x: 0.5, y: 0.5, r: 0.1, ax: 0.4, ay: 0.3, hz: 1.2 }, expectScores: 3,
-    taps: (W, H) => [[rowX(W, H, 2, 1, 420, 10), H * 0.4 + 27], [W / 2, H * 0.67 + 29]], shotAt: 12 },
+    taps: (W, H) => [[rowX(W, H, 3, 1, 480, 10), H * 0.4 + 27], [W / 2, H * 0.67 + 29]], shotAt: 12 },
+  { id: 'bubbles-phone-challenge', game: 'games/bubble-mirror.js', vp: [390, 844], hand: { x: 0.5, y: 0.5, r: 0.14, ax: 0.38, ay: 0.32, hz: 1.1 }, minScore: 2,
+    taps: (W, H) => [[rowX(W, H, 3, 2, 480, 10), H * 0.4 + 27], [W / 2, H * 0.67 + 29]], shotAt: 12 },
   { id: 'maze-phone-1p', game: 'games/tilt-maze.js', vp: [390, 844], sensors: true, taps: (W, H) => [[W / 2, H * 0.62 + 29]], shotAt: 10 },
   { id: 'maze-tv-series2', game: 'games/tilt-maze.js', vp: [1920, 1080], sensors: true, series: ['أ', 'ب'], expectScores: 2, passTaps: 1, taps: (W, H) => [[W / 2, H * 0.62 + 29]], shotAt: 10 },
 ];
@@ -44,7 +46,7 @@ async function run(v, idx) {
       await sleep(500); const el = (Date.now() - t0) / 1000;
       if (!shot && el >= v.shotAt) { shot = true; const s = await c.send('Page.captureScreenshot', { format: 'png' }); writeFileSync(`${SHOTS}/newgames-${v.id}.png`, Buffer.from(s.result.data, 'base64')); }
       hudSeen.add(await c.ev(`document.getElementById('hScore').textContent+'|'+document.getElementById('hTime').textContent`).catch(() => ''));
-      if (passTaps > 0 && el > 64 && !(await c.ev(`!!(window.__res)`))) { /* شاشة التمرير: لمسة واحدة تنقل الدور */ if (el < 70 || el % 3 < 0.6) { await tap(W / 2, H / 2); passTaps = 0; } }
+      if (passTaps > 0 && el > 74 && !(await c.ev(`!!(window.__res)`))) { /* شاشة التمرير (دور 70 ث): لمسة واحدة تنقل الدور */ if (el < 80 || el % 3 < 0.6) { await tap(W / 2, H / 2); passTaps = 0; } }
       end = v.series ? await c.ev(`window.__res`) : await c.ev(`(__engine.events.find(e=>e.n==='end')||{}).d||null`);
     }
     ok(v.id + ' reached api.end', !!end, { end: end && { score: end.score, scores: end.scores, ranks: end.ranks, text: end.text }, seconds: Math.round((Date.now() - t0) / 1000) });

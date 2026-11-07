@@ -4,7 +4,7 @@
 import { readFileSync } from 'node:fs';
 // القائمتان تُقرآن من engine.js نفسه كي لا يتأخر المحقّق عن المحرك (كان نسخة يدوية فتخلّف عن audio.mic)
 const ENG = readFileSync(new URL('../engine.js', import.meta.url), 'utf8'), list = k => JSON.parse(new RegExp('const ' + k + ' = (\\[[^\\]]*\\])').exec(ENG)[1].replace(/'/g, '"'));
-const KNOWN = list('KNOWN'), PLANNED = list('PLANNED');
+const KNOWN = list('KNOWN'), PLANNED = list('PLANNED'), PLAYS = list('PLAYS'), STYLES = list('STYLES');
 const FORBID = [[/\bfetch\s*\(/, 'fetch'], [/XMLHttpRequest/, 'XMLHttpRequest'], [/\bWebSocket\b/, 'WebSocket'], [/\bEventSource\b/, 'EventSource'], [/sendBeacon/, 'sendBeacon'],
   [/\bimport\b/, 'الكلمة import (المحرك يرفض الملف كله)'], [/\beval\s*\(/, 'eval'], [/\bnew\s+Function\b|\bFunction\s*\(/, 'Function()'],
   [/\b(window|self|globalThis)\.(parent|top|opener|frameElement)\b/, 'parent/top/opener'], [/document\.cookie/, 'document.cookie'], [/\b(localStorage|sessionStorage|indexedDB|caches)\b/, 'تخزين'],
@@ -31,6 +31,15 @@ for (const file of process.argv.slice(2)) {
   else if ([...head.howto].length > 40) warns.push('@howto طويلة (' + [...head.howto].length + ' حرفًا): الأقصر أوضح للطفل (≤40)؛ تُقصّ عند 60');
   if (head['howto-act'] && !HOWACTS.includes(head['howto-act'])) errs.push('@howto-act «' + head['howto-act'] + '» ليس من الأفعال المعروفة: ' + HOWACTS.join(' '));
   if (head.howto && !/\bcountdown\s*\(/.test(src)) warns.push('@howto لا يظهر إلا عند ui.countdown: ابدأ الجولة الأولى بها');
+  // بيانات الفلاتر (0.6، ENGINE.md §1.1): غيابها تنبيه، وقيمة خارج المجموعة المغلقة خطأ
+  for (const k of ['players', 'minutes', 'age', 'play', 'style']) if (!head[k]) warns.push('لا يوجد // @' + k + ': أضفه لتظهر اللعبة في فلاتر القائمة (ENGINE.md §1.1)');
+  if (head.players) { const m = /^(\d{1,2})(?:\s*-\s*(\d{1,2}))?$/.exec(head.players), a = m && +m[1], b = m && +(m[2] || m[1]); if (!m || a < 1 || b < a || b > 16) errs.push('@players «' + head.players + '» يجب أن يكون رقمًا أو مدى مثل 1-4 (من 1 إلى 16)');
+    else if (caps.includes('players.pads')) { const pd = /(\d)\s*-\s*(\d)/.exec(head.pads || '1-8'); if (pd && (a < +pd[1] || b > +pd[2])) warns.push('@players ' + head.players + ' خارج مدى @pads ' + pd[1] + '-' + pd[2]); } }
+  if (head.minutes && !(+head.minutes >= 1 && +head.minutes <= 60)) errs.push('@minutes «' + head.minutes + '» يجب أن يكون دقائق من 1 إلى 60');
+  if (head.age && !(Number.isInteger(+head.age) && +head.age >= 3 && +head.age <= 18)) errs.push('@age «' + head.age + '» يجب أن يكون أصغر عمر مناسب، رقمًا صحيحًا من 3 إلى 18');
+  if (head.play && !PLAYS.includes(head.play)) errs.push('@play «' + head.play + '» ليست من: ' + PLAYS.join(' '));
+  if (head.play === 'pads' && !caps.includes('players.pads')) errs.push('@play pads يحتاج القدرة players.pads');
+  if (head.style) { const un = head.style.split(/[\s|,]+/).filter(x => x && !STYLES.includes(x)); if (un.length) errs.push('@style «' + un.join(' ') + '» ليست من: ' + STYLES.join(' ')); }
   for (const c of caps) { if (PLANNED.includes(c)) errs.push('القدرة «' + c + '» غير متاحة بعد'); else if (!KNOWN.includes(c)) errs.push('قدرة غير معروفة: ' + c); }
   const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/([^:])\/\/.*$/gm, '$1');
   if (!/\bdefineGame\s*\(/.test(code)) errs.push('لا يوجد استدعاء defineGame({...})');

@@ -34,22 +34,125 @@ select{font:inherit;color:var(--fg);background:var(--surface-hi);border:1px soli
 .warn{background:color-mix(in srgb,var(--bad) 16%,var(--surface));border:1px solid color-mix(in srgb,var(--bad) 45%,transparent);border-radius:var(--r-m);padding:12px 16px;line-height:1.7;margin:0 0 16px;font-size:15px}
 .card{display:block;width:100%;text-align:start;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-m);padding:14px 18px;margin:0 0 10px;color:var(--fg);font:inherit;min-height:56px}
 .card b{display:block;font-size:18px;margin-bottom:2px}.card small{color:var(--mut);line-height:1.5;font-weight:400}
-/* القائمة */
-.wrap{max-width:1240px;margin:0 auto}
-.top{display:flex;flex-wrap:wrap;align-items:center;gap:16px 24px;margin:4px 0 24px}
-.brandm{display:flex;align-items:center;gap:14px;flex:1 1 240px;min-width:0}
-.logo{flex:none;width:52px;height:52px;border-radius:16px;display:grid;place-items:center;font-size:28px;background:linear-gradient(135deg,var(--brand),#ff6b8b);box-shadow:var(--shadow)}img.logo{background:none;box-shadow:none;border-radius:0;object-fit:contain;filter:drop-shadow(0 6px 14px #7c6cff55)}
-.brandm h1{margin:0}.brandm small{display:block;color:var(--mut);font-size:13px;margin-top:2px}
-.acts{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.acts .ico{width:56px;padding:0;font-size:22px}
+/* الرئيسية (0.6.1): «نلعب الآن؟» + أقسام حسب طريقة اللعب + مسابقات. لا صور إلا الأغلفة المعتمدة؛ الباقي أشكال هندسية بلون البصمة. */
+.wrap{max-width:1280px;margin:0 auto}
+.ic{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.top{display:flex;align-items:center;gap:12px 20px;margin:0 0 20px;flex-wrap:wrap}
+.brandm{display:flex;align-items:center;gap:12px;flex:1 1 auto;min-width:0}
+.logo{flex:none;width:44px;height:44px;object-fit:contain;filter:drop-shadow(0 6px 14px #7c6cff55)}
+.brandm h1{margin:0;font-size:clamp(22px,4vw,30px)}.brandm small{display:block;color:var(--mut);font-size:12px;margin-top:-2px}
+#tabs{display:flex;gap:4px;padding:5px;background:color-mix(in srgb,var(--surface) 80%,transparent);border:1px solid var(--line);border-radius:99px}
+#tabs button{display:inline-flex;align-items:center;gap:8px;min-height:48px;padding:0 18px;border:0;border-radius:99px;background:transparent;color:var(--mut);font-weight:700}
+#tabs button:hover{background:var(--surface-hi);color:var(--fg)}
+#tabs button[aria-current=page]{background:var(--fg);color:var(--bg)}
+.hbtn{display:inline-flex;align-items:center;gap:8px;border-radius:99px;min-height:48px}
+.home{display:flex;flex-direction:column;gap:28px}
+.lead{display:grid;grid-template-columns:minmax(0,1fr);gap:20px}
+@media (min-width:1100px){.lead.hero2{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}}
+.now{background:linear-gradient(160deg,color-mix(in srgb,var(--brand) 16%,var(--surface)),var(--surface) 60%);border:1px solid color-mix(in srgb,var(--brand) 30%,var(--line));border-radius:28px;padding:20px 20px 22px;box-shadow:var(--shadow)}
+.now h2{margin:0;font-size:clamp(24px,4vw,30px);font-weight:800;line-height:1.2}.nowk{display:flex;align-items:baseline;justify-content:space-between;gap:8px}.nowk small{color:var(--mut);font-size:13px}
+.q{margin:16px 0 8px;color:var(--mut);font-size:14px;font-weight:700}
+.pcount{display:flex;gap:8px;flex-wrap:wrap}
+.pc{display:inline-flex;align-items:center;gap:8px;white-space:nowrap;min-height:52px;padding:0 16px;border-radius:99px;font-weight:800;font-size:17px}
+.pc .dots{display:inline-flex;gap:3px}.pc .dots .psh{width:14px;height:14px}
+.pc[aria-pressed=true]{background:var(--fg);color:var(--bg);border-color:transparent}
+.how{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.hw{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-height:96px;padding:12px;border-radius:var(--r-m);text-align:start;line-height:1.3}
+.hw b{font-size:16px}.hw small{color:var(--mut);font-weight:400;font-size:12px}.hw .ic{width:24px;height:24px;color:var(--sc)}
+.hw[aria-pressed=true]{border:2px solid var(--sc);background:color-mix(in srgb,var(--sc) 16%,var(--surface))}
+.pick{display:flex;gap:14px;align-items:center;margin:16px 0 0;padding:10px;border-radius:var(--r-l);background:color-mix(in srgb,var(--bg) 55%,transparent);border:1px solid var(--line);min-height:96px}
+.pick .art{flex:none;width:128px;aspect-ratio:16/10;border-radius:14px}.pick b{display:block;font-size:19px;line-height:1.3}.pick .none{color:var(--mut);font-size:15px;padding:8px}
+.goes{display:flex;gap:10px;margin-top:14px}.goes .pri{flex:1;min-height:60px;font-size:19px;border-radius:20px;display:inline-flex;align-items:center;justify-content:center;gap:10px}.goes .alt{min-height:60px;border-radius:20px}
+.pri .ic[data-i=play],.ic[data-i=play]{fill:currentColor;stroke:none}
+.hero{position:relative;overflow:hidden;border-radius:28px;min-height:340px;display:flex;flex-direction:column;justify-content:flex-end;padding:28px;border:1px solid var(--line);box-shadow:var(--shadow);isolation:isolate}
+.hero>.art{position:absolute;inset:0;z-index:-1;border-radius:0}
+.hero::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(0deg,#0f0d1af2 8%,#0f0d1a99 45%,transparent 75%)}
+.hero .tag{align-self:flex-start;margin-bottom:auto}.hero h2{margin:0;font-size:clamp(30px,4vw,46px);line-height:1.15;color:#fff}.hero p{margin:6px 0 10px;color:#e4e0f5;max-width:46ch}.hero .meta{color:#e4e0f5}.hero .pri{align-self:flex-start;min-height:60px;padding:0 30px;font-size:19px;border-radius:20px;display:inline-flex;align-items:center;gap:10px;margin-top:14px}
+.tag{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:800;padding:4px 10px;border-radius:99px;background:#0f0d1acc;color:#f4f1ff;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:4px 2px;margin:-4px -2px}.chips::-webkit-scrollbar{display:none}
+.fchip{flex:none;display:inline-flex;align-items:center;gap:6px;min-height:48px;padding:0 16px;border-radius:99px;font-size:15px}.fchip .ic{width:17px;height:17px}
+.fchip[aria-pressed=true]{background:color-mix(in srgb,var(--brand) 22%,var(--surface));border-color:var(--brand);color:var(--fg)}
+.fchip i{font-style:normal;color:var(--mut);font-variant-numeric:tabular-nums}
+.shelf>header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:0 0 12px}
+.shelf h2{display:flex;align-items:center;gap:10px;margin:0;font-size:clamp(20px,3vw,24px);font-weight:800}
+.shelf h2::before{content:"";width:12px;height:12px;border-radius:4px;background:var(--sc)}
+.shelf header p{margin:2px 0 0;color:var(--mut);font-size:14px}
+.shelf .more{flex:none;min-height:44px;padding:0 14px;border-radius:99px;background:transparent;color:var(--mut);font-size:14px}
+.shelf .empty{color:var(--mut);font-size:15px;padding:8px 0}
+.shrow{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
+.card.g{padding:0;margin:0;overflow:hidden;border-radius:var(--r-l);display:flex;flex-direction:column;min-height:0;background:var(--surface);transition:transform .2s var(--ease),border-color .2s var(--ease),box-shadow .2s var(--ease)}
+.card.g:hover:not(:disabled),.card.g:focus-visible{transform:scale(1.03);border-color:var(--ac);box-shadow:0 0 0 3px color-mix(in srgb,var(--ac) 55%,transparent),0 18px 36px -16px color-mix(in srgb,var(--ac) 70%,#000)}
+.card.g:focus-visible{outline:0}
+.art{position:relative;display:block;aspect-ratio:16/10;overflow:hidden;background:linear-gradient(150deg,var(--ac-hi),var(--ac) 48%,var(--ac-lo))}
+.art svg{position:absolute;inset:0;width:100%;height:100%}
+.art .pic{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.art .tag{position:absolute;top:8px;inset-inline-end:8px}
+.card.g .body{display:flex;flex-direction:column;gap:4px;padding:12px 14px 14px;flex:1}
+.card.g b{font-size:18px;line-height:1.3}
+.card.g small.d{display:none}
+.meta{display:flex;flex-wrap:wrap;gap:4px 12px;color:var(--mut);font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}.meta span{display:inline-flex;align-items:center;gap:4px}.meta .ic{width:15px;height:15px}
+.badge{align-self:flex-start;display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--mut);border:1px solid var(--line);border-radius:99px;padding:2px 10px;margin-top:4px}
+.card.g em{display:block;font-style:normal;font-size:13px;line-height:1.5;color:var(--bad);background:color-mix(in srgb,var(--bad) 14%,transparent);border-radius:var(--r-s);padding:6px 10px;margin-top:4px}
+.card.g:disabled{opacity:1}.card.g:disabled .art,.card.g:disabled b,.card.g:disabled .meta{filter:grayscale(1);opacity:.5}
+.qgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+.qtile{position:relative;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;gap:14px;min-height:112px;padding:14px 16px;border:0;border-radius:var(--r-l);text-align:start;color:#1a1430;background:var(--tc);overflow:hidden;transition:transform .2s var(--ease),box-shadow .2s var(--ease)}
+.qtile:hover,.qtile:focus-visible{background:var(--tc);transform:scale(1.03);box-shadow:0 0 0 3px #fff,0 16px 30px -14px var(--tc);outline:0}
+.qtile b{font-size:17px;line-height:1.3}.qtile small{font-size:13px;font-weight:700;opacity:.75}.qtile .psh{position:absolute;top:12px;inset-inline-end:12px;width:26px;height:26px;opacity:.45}
+.qtile .psh *{fill:#1a1430}
+.qtile.fam{background:linear-gradient(135deg,#a37bff,#7c6cff);color:#fff}.qtile.fam small{opacity:.85}.qtile.fam .ic{position:absolute;top:12px;inset-inline-end:12px;width:26px;height:26px}
+.makecard{display:flex;align-items:center;gap:14px;width:100%;min-height:84px;padding:14px 18px;border:2px dashed var(--line);border-radius:var(--r-l);background:transparent;text-align:start}
+.makecard .ic{width:28px;height:28px;color:var(--warn)}.makecard b{display:block;font-size:17px}.makecard small{color:var(--mut);font-weight:400;font-size:13px}
+#mine .card{position:relative}.del{position:absolute;top:8px;inset-inline-end:8px;min-height:44px;width:44px;padding:0;border-radius:50%;z-index:2}
+#toast{position:fixed;z-index:40;left:16px;right:16px;bottom:calc(96px + env(safe-area-inset-bottom));margin-inline:auto;width:fit-content;max-width:calc(100% - 32px);padding:12px 20px;border-radius:16px;background:var(--fg);color:var(--bg);font-weight:700;box-shadow:var(--shadow);animation:rise .24s var(--ease) both}
+/* صفحات فرعية: اصنع لعبة، أسئلة العائلة */
+.subh{display:flex;align-items:center;gap:12px;margin:0 0 16px}.subh h2{margin:0;font-size:26px;font-weight:800}.subh .back{width:48px;padding:0;border-radius:50%;display:grid;place-items:center}
+#make,.panel2{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-l);padding:8px 20px 18px;box-shadow:var(--shadow);max-width:820px}
+#make h2{font-size:18px;margin:14px 0 4px}
+.panel2{padding:16px 18px;margin:0 0 16px}
+.fbar{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 16px}.fbar button{display:inline-flex;align-items:center;gap:8px}
+.flist{display:grid;gap:10px;max-width:820px}
+.fpack{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-m);padding:12px 14px}
+.fpack .t{flex:1 1 200px;min-width:0}.fpack .t b{display:block;font-size:18px;overflow-wrap:anywhere}.fpack .t small{color:var(--mut)}.fpack .acts2{display:flex;flex-wrap:wrap;gap:6px}
+.fpack .acts2 button{min-height:48px;padding:0 14px;display:inline-flex;align-items:center;gap:6px}
+.warnchip{display:inline-block;font-size:12px;font-weight:800;color:var(--warn);border:1px solid color-mix(in srgb,var(--warn) 50%,transparent);border-radius:99px;padding:1px 8px;margin-inline-start:6px}
+.fin{width:100%;font:inherit;color:var(--fg);background:var(--bg2);border:1px solid var(--line);border-radius:var(--r-s);min-height:48px;padding:8px 12px}
+textarea.fin{resize:vertical;min-height:72px}
+.fq{border:1px solid var(--line);border-radius:var(--r-m);padding:12px;margin:0 0 12px;background:var(--surface)}
+.fq legend{font-weight:800;padding:0 6px}
+.fch{display:flex;align-items:center;gap:8px;margin:8px 0}.fch input[type=radio]{flex:none;width:28px;height:28px;accent-color:var(--ok);margin:0}
+.cnt{display:block;text-align:end;color:var(--mut);font-size:12px;font-variant-numeric:tabular-nums}
+.ferr{color:var(--bad);font-size:14px;min-height:0}.ferr:empty{display:none}
+.fprev{list-style:none;margin:8px 0;padding:0;display:grid;gap:8px}.fprev li{background:var(--bg2);border-radius:var(--r-s);padding:8px 12px;overflow-wrap:anywhere}.fprev small{display:block;color:var(--mut)}
+.dlg{position:fixed;inset:0;z-index:25;display:grid;place-items:center;padding:16px;background:color-mix(in srgb,var(--bg) 70%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.dlg>div{width:min(100%,560px);max-height:calc(100% - 16px);overflow:auto;background:var(--bg2);border:1px solid var(--line);border-radius:var(--r-l);padding:20px;box-shadow:var(--shadow);animation:rise .24s var(--ease) both}
+.dlg h3{margin:0 0 8px;font-size:22px}.dlg .row{justify-content:flex-start}
+.sqr{display:block;width:min(100%,300px);aspect-ratio:1;height:auto;margin:8px auto;border-radius:16px;background:#fff;box-shadow:0 0 0 8px #fff}
+@media (max-width:760px){
+  .view#menu{padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+  #tabs{position:fixed;z-index:15;left:12px;right:12px;bottom:max(10px,env(safe-area-inset-bottom));justify-content:space-around;border-radius:26px;padding:6px;background:color-mix(in srgb,var(--bg2) 82%,transparent);-webkit-backdrop-filter:blur(16px) saturate(1.4);backdrop-filter:blur(16px) saturate(1.4);box-shadow:0 12px 32px -10px #000c}
+  #tabs button{flex:1;flex-direction:column;gap:2px;min-height:56px;padding:4px 2px;font-size:12px;border-radius:20px}
+  #tabs button[aria-current=page]{background:color-mix(in srgb,var(--brand) 28%,transparent);color:var(--fg)}
+  #upd{bottom:calc(92px + env(safe-area-inset-bottom))}
+  .top{margin-bottom:14px}.brandm small{display:none}
+  .home{gap:24px}
+  .now{padding:16px 14px 16px;border-radius:24px}
+  .pcount{display:grid;grid-template-columns:repeat(4,auto);gap:6px}.pc{padding:0 8px;font-size:15px;gap:4px;justify-content:center}.pc .dots .psh:nth-child(n+3){display:none}.pc .dots .psh{width:10px;height:10px}.pc .dots{gap:2px}
+  .hw{min-height:88px;padding:10px}.hw small{display:none}
+  .pick .art{width:104px}
+  .shrow,.qgrid{display:grid;grid-auto-flow:column;grid-template-columns:none;grid-auto-columns:min(64vw,250px);overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;margin:0 -16px;padding:4px 16px 10px;gap:12px}
+  .qgrid{grid-template-rows:repeat(2,auto);grid-auto-columns:min(42vw,170px)}
+  .shrow::-webkit-scrollbar,.qgrid::-webkit-scrollbar{display:none}
+  .shrow>*,.qgrid>*{scroll-snap-align:start}
+  .shelf.open .shrow{grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-columns:auto;overflow:visible;margin:0;padding:0}
+  .card.g:hover:not(:disabled){transform:none}
+  .qtile{min-height:96px}
+}
+@media (min-width:1600px){.wrap{max-width:1640px}.shrow{grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:22px}.card.g b{font-size:22px}.meta{font-size:16px}.now h2{font-size:38px}.hw b,.pc{font-size:20px}.qtile b{font-size:20px}h1{font-size:40px}#ser>*{max-width:760px}#ov .panel{width:min(100%,680px);padding:40px 36px 32px}#ovI{font-size:64px}#ovT{font-size:34px}#ovK{font-size:18px}}
 #inst{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:color-mix(in srgb,var(--brand) 14%,var(--surface));border:1px solid color-mix(in srgb,var(--brand) 45%,transparent);border-radius:var(--r-l);padding:14px 18px;margin:0 0 20px;animation:rise .24s var(--ease) both}#inst[hidden],#inst button[hidden]{display:none}#inst .ii{font-size:30px}#inst .it{flex:1 1 220px;display:grid;gap:2px}#inst .it b{font-size:17px}#inst .it small{color:var(--mut);font-size:14px;line-height:1.6}#inst .ia{display:flex;gap:8px}#inst button{min-height:44px;padding:0 18px}
-#make{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-l);padding:8px 20px 16px;margin:32px 0 24px;box-shadow:var(--shadow);max-width:760px}
-#make h2,.sech{font-size:18px;margin:14px 0 4px}.sech{margin:28px 0 12px}
 .steps{margin:0;padding-inline-start:22px}.steps li{margin:14px 0}.steps b{display:block;margin-bottom:8px}
 .steps textarea{width:100%;box-sizing:border-box;font:inherit;font-size:15px;color:var(--fg);background:var(--bg2);border:1px solid var(--line);border-radius:var(--r-m);padding:10px 12px;resize:vertical}
 .steps .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
 a.btn{display:inline-flex;align-items:center;min-height:48px;padding:0 18px;border-radius:var(--r-m);border:1px solid var(--line);background:var(--surface-hi);color:var(--fg);text-decoration:none;font-weight:600}
-#mine .card{position:relative}.del{position:absolute;top:8px;inset-inline-end:8px;min-height:36px;width:36px;padding:0;border-radius:50%;z-index:2}
 /* الإعدادات (0.5.2): ورقة فوق القائمة، مجموعات بعناوين، أهداف لمس ≥48px */
 #settings{position:fixed;inset:0;z-index:20;overflow:auto;overscroll-behavior:contain;padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));background:color-mix(in srgb,var(--bg) 78%,transparent);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
 #settings .sheet{width:min(100%,1040px);margin:0 auto;background:var(--bg2);border:1px solid var(--line);border-radius:var(--r-l);padding:0 20px 24px;box-shadow:var(--shadow);animation:rise .24s var(--ease) both}
@@ -83,30 +186,6 @@ button.danger:hover{background:color-mix(in srgb,var(--bad) 20%,var(--surface))}
 /* شريط التحديث: يظهر في القائمة فقط، لا أثناء لعبة ولا في ردهة التلفاز */
 #upd{position:fixed;z-index:30;left:16px;right:16px;bottom:max(16px,env(safe-area-inset-bottom));margin-inline:auto;width:fit-content;max-width:calc(100% - 32px);display:flex;align-items:center;gap:12px;padding:8px;padding-inline-start:18px;background:var(--surface);color:var(--fg);border:1px solid color-mix(in srgb,var(--brand) 55%,transparent);border-radius:99px;box-shadow:0 18px 44px -14px #000d;animation:rise .24s var(--ease) both}
 #upd>span{font-size:22px}#upd b{font-size:16px;white-space:nowrap}#upd .pri{min-height:48px;border-radius:99px;padding:0 22px}#upd .ico{flex:none;width:44px;min-height:44px;padding:0;border:0;border-radius:50%;background:transparent;color:var(--mut)}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,290px),1fr));gap:20px}
-#list .card{padding:0;margin:0;overflow:hidden;border-radius:var(--r-l);display:flex;flex-direction:column;min-height:0;box-shadow:var(--shadow);animation:rise .24s var(--ease) both;transition:transform .2s var(--ease),border-color .2s var(--ease),box-shadow .2s var(--ease)}
-#list .card:nth-child(2){animation-delay:30ms}#list .card:nth-child(3){animation-delay:60ms}#list .card:nth-child(4){animation-delay:90ms}#list .card:nth-child(5){animation-delay:120ms}#list .card:nth-child(n+6){animation-delay:150ms}
-#list .card:hover:not(:disabled){transform:translateY(-3px);border-color:color-mix(in srgb,var(--ac) 70%,transparent);box-shadow:0 18px 36px -16px color-mix(in srgb,var(--ac) 60%,#000)}
-#list .card:focus-visible{outline-offset:3px}
-.cover{position:relative;display:block;aspect-ratio:16/10;overflow:hidden;background:radial-gradient(46% 62% at 50% 54%,color-mix(in srgb,var(--ac) 42%,transparent),transparent 72%),radial-gradient(120% 100% at 50% 110%,color-mix(in srgb,var(--ac-lo) 55%,#120f22),transparent 70%),linear-gradient(180deg,#1d1934,#120f22)}
-/* بلا غلاف (0.5.2): ملصق مولَّد مقصود على ليل بنفسجي كالأغلفة المرسومة — توهّج بلون البصمة، أيقونة فعل اللعبة في قرص زجاجي، ونجوم خافتة. لا وجوه ولا شخصيات */
-.cover::before,.cover::after{content:"";position:absolute;inset:0;pointer-events:none}
-.cover::before{background:radial-gradient(1.5px 1.5px at 14% 22%,#fff9,transparent 60%),radial-gradient(1.5px 1.5px at 82% 18%,#fff8,transparent 60%),radial-gradient(2px 2px at 70% 74%,#fff6,transparent 60%),radial-gradient(1.5px 1.5px at 24% 80%,#fff7,transparent 60%),radial-gradient(2px 2px at 90% 52%,#fff5,transparent 60%),radial-gradient(1.5px 1.5px at 8% 54%,#fff6,transparent 60%)}
-.cover::after{inset:auto;left:50%;top:52%;width:40%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffffff2e,#ffffff08 60%);border:2px solid color-mix(in srgb,var(--ac) 70%,#fff 10%);box-shadow:0 0 0 10px color-mix(in srgb,var(--ac) 14%,transparent),0 18px 40px -12px color-mix(in srgb,var(--ac) 80%,#000)}
-.art{position:absolute;inset:0;z-index:1;display:grid;place-items:center;padding-top:2%;font-size:clamp(40px,5.4vw,60px);filter:drop-shadow(0 6px 10px #0008);transition:opacity .2s}
-.pic{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .2s}
-.has .pic{opacity:1}.has .art,.has::before,.has::after{opacity:0}
-.body{display:flex;flex-direction:column;gap:6px;padding:16px 18px 18px;flex:1}
-#list .card b{font-size:19px;margin:0;line-height:1.3}
-#list .card small{font-size:14px;color:var(--mut);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:3em}
-.caps{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:auto;padding-top:8px}
-.cap{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--surface-hi);font-size:17px;line-height:1}
-.badge{display:inline-flex;align-items:center;font-style:normal;font-size:13px;color:var(--mut);border:1px solid var(--line);border-radius:99px;padding:3px 12px;min-height:34px}
-#list .card em{display:block;font-style:normal;font-size:14px;line-height:1.5;color:var(--bad);background:color-mix(in srgb,var(--bad) 14%,transparent);border-radius:var(--r-s);padding:8px 12px;margin-top:4px}
-#list .card:disabled{opacity:1;box-shadow:none}
-#list .card:disabled .cover,#list .card:disabled b,#list .card:disabled small,#list .card:disabled .caps{filter:grayscale(1);opacity:.5}
-.foot{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:32px 0 8px}
-.foot button{background:transparent;color:var(--mut)}
 @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 /* المسرح */
 #stage{position:fixed;inset:0;background:#000;overflow:hidden;--ac:var(--brand)}
@@ -136,11 +215,11 @@ button.danger:hover{background:color-mix(in srgb,var(--bad) 20%,var(--surface))}
 /* الدوري */
 #ser>*{max-width:640px;margin-inline:auto}
 #ser>button,#ser>label{display:block}#ser>label{margin-top:18px;margin-bottom:6px;color:var(--mut);font-size:15px}
-.shero{display:block;width:100%;aspect-ratio:16/7;object-fit:cover;border-radius:var(--r-l);margin:4px auto 8px;box-shadow:var(--shadow)}
 #ser .row{margin:8px auto 16px}
+.sband{height:10px;border-radius:99px;margin:8px auto 18px;background:linear-gradient(90deg,#4da3ff 0 25%,#ff6b8b 25% 50%,#ffc145 50% 75%,#3ddc97 75%)}
 #ser button{min-height:56px}.sbig{width:100%;margin:0 0 10px;font-size:18px}
 #ser button.pri{font-size:18px}
-.chip{min-width:56px;padding:0 16px}.chip.on{background:var(--brand);color:var(--on-brand);border-color:transparent;font-weight:700}
+#ser .chip,.tvmodes .chip,.pmodes .chip{min-width:56px;padding:0 16px}.chip.on{background:var(--brand);color:var(--on-brand);border-color:transparent;font-weight:700}
 #ser input[type=text]{font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:var(--r-m);padding:0 14px;min-height:56px;width:calc(50% - 6px)}
 #ser button.card{display:flex;align-items:center;gap:8px;font-weight:600}
 #ser button.card.on{border-color:var(--brand);background:color-mix(in srgb,var(--brand) 14%,var(--surface))}
@@ -210,8 +289,15 @@ button.danger:hover{background:color-mix(in srgb,var(--bad) 20%,var(--surface))}
 .pbtn.down,.pbtn:active{transform:translateY(8px) scale(.97);box-shadow:0 2px 0 color-mix(in srgb,var(--pc) 55%,#000),0 8px 18px -10px var(--pc)}
 .pctl.nostick .pplay{grid-template-columns:1fr}.pctl.nostick .pbtn.pa{width:min(78vw,60vh,320px);font-size:34px}
 .psay{min-height:56px;display:grid;place-items:center;font-size:20px;font-weight:700;text-align:center;color:var(--mut);padding:6px;border-radius:var(--r-m);transition:background .2s,color .2s}.psay.on{background:color-mix(in srgb,var(--warn) 22%,var(--surface));color:var(--fg)}
+.pchq{font-size:clamp(24px,7vw,40px);font-weight:800;text-align:center;padding:4px 8px 10px;line-height:1.3}
+.pchg{flex:1;display:grid;gap:12px;min-height:0;grid-template-columns:1fr;grid-auto-rows:1fr}.pchg.n4{grid-template-columns:1fr 1fr}
+.pchc{min-height:64px;display:flex;align-items:center;justify-content:center;gap:12px;padding:8px 12px;border-radius:24px;font-size:clamp(26px,8vw,40px);font-weight:800;line-height:1.2;color:var(--fg);background:var(--surface);border:3px solid var(--line);touch-action:none;transition:transform 80ms,opacity .2s,filter .2s;overflow:hidden;word-break:break-word}
+.pchg.n4 .pchc{flex-direction:column;gap:6px;font-size:clamp(22px,7vw,34px)}
+.pchc.col{color:var(--cf);background:var(--cc);border-color:color-mix(in srgb,var(--cc) 60%,#000);box-shadow:0 8px 0 color-mix(in srgb,var(--cc) 55%,#000)}.pchc.col:hover{background:var(--cc)}
+.pchc.emo span{font-size:1.5em}.pchc .pchs{width:clamp(36px,11vw,60px);height:clamp(36px,11vw,60px)}
+.pchc.on{transform:scale(1.03);outline:6px solid var(--fg);outline-offset:3px}.pchc.off{opacity:.28;filter:grayscale(.6)}
+.ptouch{flex:1;position:relative;min-height:0;border-radius:24px;overflow:hidden;background:var(--surface);touch-action:none}.ptouch.dark{background:#05040a}.ptouch canvas{position:absolute;inset:0}
 @media (orientation:landscape) and (max-height:520px){.ptop{min-height:48px}.ptop .psh{width:32px;height:32px}.psay{min-height:40px;font-size:17px}.pbtns{flex-direction:row}.pbtn{width:min(40%,34vh*1.3,180px)}}
-@media (min-width:1600px){.wrap{max-width:1640px}.grid{grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:28px}#list .card b{font-size:23px}#list .card small{font-size:17px}h1{font-size:40px}.acts button.big{min-height:64px;font-size:20px}.body{padding:20px 22px 22px}#ser>*{max-width:760px}#ov .panel{width:min(100%,680px);padding:40px 36px 32px}#ovI{font-size:64px}#ovT{font-size:34px}#ovK{font-size:18px}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 html.calm *,html.calm *::before,html.calm *::after{animation:none!important;transition:none!important}
 /* نص أكبر (0.5.2): تكبير واجهة المضيف كلها بنسبة ثابتة؛ ألعاب api.ui تكبّر نصها بـapi.prefs.textScale */
@@ -223,37 +309,47 @@ html.big #menu .wrap,html.big #settings .sheet,html.big #ser>*,html.big #ov .pan
   <div class="wrap">
     <header class="top">
       <div class="brandm"><img class="logo" src="icon.svg" alt="" aria-hidden="true"><div><h1>ألعاب الكاميرا</h1><small id="ver"></small></div></div>
-      <div class="acts">
-        <button class="pri big" id="playBtn">▶ العب</button>
-        <button class="big" id="serBtn">🏆 دوري</button>
-        <button class="big" id="tvBtn">📺 العب بالجوالات</button>
-        <button class="big" id="joinBtn">📱 انضم</button>
-        <button class="ico" id="setBtn" aria-label="الإعدادات" aria-expanded="false" aria-controls="settings">⚙️</button>
-      </div>
+      <nav id="tabs" aria-label="التنقّل">
+        <button type="button" id="tabHome" data-page="home" aria-current="page"><svg class="ic" data-i="home"></svg><span>الرئيسية</span></button>
+        <button type="button" id="serBtn"><svg class="ic" data-i="trophy"></svg><span>الدوري</span></button>
+        <button type="button" id="tabMake" data-page="makePage"><svg class="ic" data-i="spark"></svg><span>اصنع</span></button>
+        <button type="button" id="setBtn" aria-expanded="false" aria-controls="settings"><svg class="ic" data-i="gear"></svg><span>الإعدادات</span></button>
+      </nav>
+      <button class="hbtn" id="joinBtn"><svg class="ic" data-i="qr"></svg>انضم برمز</button>
     </header>
     <section id="inst" hidden aria-label="تثبيت التطبيق">
-      <span class="ii" aria-hidden="true">📲</span>
       <div class="it"><b>ثبّت الألعاب على جوالك</b><small id="instMsg">تصير أيقونة على الشاشة الرئيسية، وتعمل بلا إنترنت.</small></div>
       <div class="ia"><button class="pri" id="instGo">ثبّت</button><button id="instNo">لاحقًا</button></div>
     </section>
     <section id="tvHint" hidden aria-label="وضع التلفاز">
-      <span class="ii" aria-hidden="true">📺</span>
       <div class="it"><b>شاشة كبيرة؟ اجعلها شاشة العرض</b><small>يمسح كل لاعب رمزًا بجواله ويصير جواله ذراع التحكّم، والشاشة للعرض فقط.</small></div>
       <div class="ia"><button class="pri" id="tvHintGo">العب بالجوالات</button></div>
     </section>
-    <div id="list" class="grid"></div>
-    <h2 class="sech" id="myH" hidden>ألعابي</h2>
-    <div id="mine" class="grid"></div>
-    <section id="make" aria-labelledby="makeH">
-      <h2 id="makeH">✨ اصنع لعبتك بالذكاء الاصطناعي</h2>
-      <p class="sethint">مع أي نموذج: ChatGPT أو Gemini أو Claude أو غيره. لا حساب ولا مفتاح هنا.</p>
-      <ol class="steps">
-        <li><b>اكتب فكرتك</b><textarea id="idea" rows="3" placeholder="مثال: لعبة نطّ الحبل، كل ما قفز اللاعب أمام الكاميرا ياخذ نقطة، وتسرع مع الوقت"></textarea></li>
-        <li><b>انسخ الطلب والصقه في النموذج</b><span class="row"><button class="pri" id="mkCopy">📋 انسخ الطلب</button><a class="btn" href="https://chatgpt.com/" target="_blank" rel="noopener">ChatGPT</a><a class="btn" href="https://gemini.google.com/app" target="_blank" rel="noopener">Gemini</a><a class="btn" href="https://claude.ai/new" target="_blank" rel="noopener">Claude</a></span><small id="mkMsg" class="sethint"></small><textarea id="mkOut" rows="4" dir="ltr" readonly hidden></textarea></li>
-        <li><b>انسخ ردّه كاملًا والصقه هنا</b><textarea id="code" rows="4" dir="ltr" placeholder="// @title ..."></textarea><span class="row"><button class="pri" id="mkRun">▶ جرّب واحفظ في «ألعابي»</button><button id="pick">أو من ملف</button></span><small class="sethint">اللعبة تعمل في صندوق معزول: لا ترى ملفاتك ولا الإنترنت. إن ظهر خطأ فانسخه وأرسله للنموذج ليصلحه.</small></li>
-      </ol>
-      <input type="file" id="file" accept=".js,text/javascript" hidden>
-    </section>
+    <div id="home" class="home">
+      <div class="lead" id="lead"><section class="now" id="now" aria-labelledby="nowH"></section></div>
+      <div class="chips" id="chips" role="toolbar" aria-label="تصفية الألعاب"></div>
+      <div id="list">
+        <section class="shelf" id="shCamera" style="--sc:#4da3ff" aria-labelledby="shCameraH"><header><div><h2 id="shCameraH">أمام الكاميرا</h2><p>جهاز واحد على حامل، وأنتم تتحرّكون. الصورة لا تُحفظ ولا تُرسل.</p></div><button class="more" type="button"></button></header><div class="shrow"></div></section>
+        <section class="shelf" id="shPads" style="--sc:#ff8a3d" aria-labelledby="shPadsH"><header><div><h2 id="shPadsH">الجوالات أذرع</h2><p>التلفاز أو اللابتوب للعرض، وكل لاعب يمسح الرمز بجواله.</p></div><button class="more" type="button" id="tvBtn">افتح الردهة</button></header><div class="shrow"></div></section>
+        <section class="shelf" id="shDevice" style="--sc:#a37bff" aria-labelledby="shDeviceH"><header><div><h2 id="shDeviceH">بيد الجوال</h2><p>جوال واحد يمرّ بينكم بالدور: ميلان ولمس.</p></div><button class="more" type="button"></button></header><div class="shrow"></div></section>
+        <section class="shelf" id="shQuiz" style="--sc:#ffc145" aria-labelledby="shQuizH"><header><div><h2 id="shQuizH">مسابقات</h2><p>اختر فئة، والجوالات أزرار الإجابة. أو اصنعوا أسئلتكم.</p></div></header><div class="shrow" id="quizGames" hidden></div><div class="qgrid" id="quizTiles"></div></section>
+      </div>
+      <section id="mineSec" hidden><div class="shelf"><header><h2 id="myH" style="--sc:#3ddc97">ألعابي</h2></header></div><div id="mine" class="shrow"></div></section>
+      <button type="button" class="makecard" id="makeCard"><svg class="ic" data-i="spark"></svg><span><b>اصنع لعبتك</b><small>اكتب فكرتك، والذكاء الاصطناعي يكتبها، وتظهر في «ألعابي».</small></span></button>
+    </div>
+    <div id="makePage" hidden>
+      <div class="subh"><button class="back" type="button" data-back aria-label="رجوع"><svg class="ic" data-i="back"></svg></button><h2>اصنع لعبتك</h2></div>
+      <section id="make" aria-label="اصنع لعبتك بالذكاء الاصطناعي">
+        <p class="sethint">مع أي نموذج: ChatGPT أو Gemini أو Claude أو غيره. لا حساب ولا مفتاح هنا.</p>
+        <ol class="steps">
+          <li><b>اكتب فكرتك</b><textarea id="idea" rows="3" placeholder="مثال: لعبة نطّ الحبل، كل ما قفز اللاعب أمام الكاميرا ياخذ نقطة، وتسرع مع الوقت"></textarea></li>
+          <li><b>انسخ الطلب والصقه في النموذج</b><span class="row"><button class="pri" id="mkCopy">انسخ الطلب</button><a class="btn" href="https://chatgpt.com/" target="_blank" rel="noopener">ChatGPT</a><a class="btn" href="https://gemini.google.com/app" target="_blank" rel="noopener">Gemini</a><a class="btn" href="https://claude.ai/new" target="_blank" rel="noopener">Claude</a></span><small id="mkMsg" class="sethint"></small><textarea id="mkOut" rows="4" dir="ltr" readonly hidden></textarea></li>
+          <li><b>انسخ ردّه كاملًا والصقه هنا</b><textarea id="code" rows="4" dir="ltr" placeholder="// @title ..."></textarea><span class="row"><button class="pri" id="mkRun">جرّب واحفظ في «ألعابي»</button><button id="pick">أو من ملف</button></span><small class="sethint">اللعبة تعمل في صندوق معزول: لا ترى ملفاتك ولا الإنترنت. إن ظهر خطأ فانسخه وأرسله للنموذج ليصلحه.</small></li>
+        </ol>
+        <input type="file" id="file" accept=".js,text/javascript" hidden>
+      </section>
+    </div>
+    <div id="famPage" hidden></div>
   </div>
 </div>
 <section id="settings" hidden aria-label="الإعدادات" role="dialog" aria-modal="true" aria-labelledby="setH">
@@ -317,15 +413,18 @@ html.big #menu .wrap,html.big #settings .sheet,html.big #ser>*,html.big #ov .pan
 <div id="tv" class="view" hidden></div>
 <div id="pad" class="view" hidden></div>
 <div id="dbg" hidden></div>
-<script src="tracker.js?v=053"></script>
-<script src="draw.js?v=053"></script>
-<script src="mic.js?v=053"></script>
-<script src="sensors.js?v=053"></script>
-<script src="players.js?v=053"></script>
-<script src="net.js?v=053"></script>
-<script src="engine.js?v=053"></script>
-<script src="series.js?v=053"></script>
-<script src="tv.js?v=053"></script>
-<script src="pad.js?v=053"></script>
+<div id="toast" role="status" aria-live="polite" hidden></div>
+<script src="tracker.js?v=061"></script>
+<script src="draw.js?v=061"></script>
+<script src="mic.js?v=061"></script>
+<script src="sensors.js?v=061"></script>
+<script src="players.js?v=061"></script>
+<script src="net.js?v=061"></script>
+<script src="engine.js?v=061"></script>
+<script src="series.js?v=061"></script>
+<script src="tv.js?v=061"></script>
+<script src="pad.js?v=061"></script>
+<script src="quizpacks.js?v=061"></script>
+<script src="home.js?v=061"></script>
 </body>
 </html>

@@ -7,6 +7,11 @@
 // @capabilities players.pads audio hud
 // @pads 1-8 free 1v1 2v2 teams
 // @series no
+// @players 1-8
+// @minutes 3
+// @age 5
+// @play pads
+// @style versus teams calm
 // لعبة ردّ فعل وأسئلة: api.pads.controls يغيّر زرّي الجوال في كل جولة، والنقاط لكل جوال (scores بترتيب index) ولكل فريق (teamScores).
 
 // إعدادات الأسرة (ENGINE.md §3.5): RS يضرب مدة الجولة، DIFF 0 سهل / 1 عادي (سلوك ما قبلها حرفيًا) / 2 صعب. by3(سهل، عادي، صعب).

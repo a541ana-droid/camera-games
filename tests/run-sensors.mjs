@@ -27,12 +27,12 @@ try {
   ok('camera card disabled with Arabic reason when no camera', ch.dis && /كاميرا/.test(ch.reason), ch);
   { const u = await c.ev(`(async()=>{ window.__devs=[{kind:'audioinput',label:''},{kind:'audiooutput',label:''}]; const r = await __engine.sensors.probe(); window.__devs=null; await __engine.sensors.probe(); return r; })()`);
     ok('before permission (no labels) a missing videoinput is NOT proof: camera counts as present', u.camera === true && u.known === false, u); }
-  ok('motion card enabled when sensor present', (await c.ev(`${card('كرة الميزان')}.disabled`)) === false, null);
+  ok('motion card enabled when sensor present', (await c.ev(`${card('متاهة الميلان')}.disabled`)) === false, null);
   await c.ev(`document.getElementById('synth').checked=true; document.getElementById('synth').dispatchEvent(new Event('change'))`);
   ok('synthetic camera source re-enables camera cards (debug)', (await c.ev(`${card('صيد الألوان')}.disabled`)) === false, null);
   // (2) لا حسّاس ⇒ بطاقة الحركة معطّلة بالسبب المطلوب
   await c.nav(BASE + '/index.html?debug=1&sensors=0');
-  const mc = await c.ev(`(()=>{const b=${card('كرة الميزان')}; return {dis:b.disabled, reason:b.querySelector('em').textContent, motion:__engine.devices.motion}})()`);
+  const mc = await c.ev(`(()=>{const b=${card('متاهة الميلان')}; return {dis:b.disabled, reason:b.querySelector('em').textContent, motion:__engine.devices.motion}})()`);
   ok('motion card disabled with Arabic reason when no sensor', mc.dis && mc.motion === false && mc.reason === 'يحتاج مستشعر حركة — غير موجود في هذا الجهاز', mc);
   await c.ev(`__engine.startGame('games/tilt-balance.js')`); await sleep(800);
   ok('loading a motion game by path without sensor shows error, nothing runs', await c.ev(`!__engine.state() && /مستشعر حركة/.test(document.getElementById('ovT').textContent) && !__engine.sensors.active()`), await c.ev(`document.getElementById('ovT').textContent`));
@@ -40,10 +40,12 @@ try {
   // (3) الإذن من نقرة البطاقة (قبل الإطلاق) + اللعب بالمصدر الاصطناعي
   await c.nav(BASE + '/index.html?debug=1&sensors=1');
   ok('menu: no listeners / nothing running', (await lis()) === '{}' && !(await c.ev('__engine.sensors.active()')), await lis());
-  await click(card('كرة الميزان')); await sleep(1800);
+  await click(card('متاهة الميلان')); await sleep(1800);
   ok('card tap requested motion+orientation permission (iOS flow shape)', (await c.ev('window.__perm')) === 0 || (await c.ev('window.__perm')) === 2, await c.ev('window.__perm')); // synth يتجاوزه؛ مسار iOS الفعلي في الاختبار 5
   ok('game running after tap, sensor active', await c.ev(`!!__engine.state() && __engine.state().ready && __engine.sensors.active()`), null);
-  await click('document.getElementById("cv")'); await c.ev(`__engine.sensors.synth.x=1`); await sleep(2500);
+  // «كرة الميزان» خرجت من القائمة (صارت مرحلة تمرين في المتاهة) وبقي ملفها مثبّتًا لهذا الفحص: تُشغَّل بالمسار
+  await c.ev(`__engine.stopGame('exit')`); await sleep(200); await c.ev(`__engine.startGame('games/tilt-balance.js')`); await sleep(1500);
+  await click('document.getElementById("cv")'); await c.ev(`__engine.sensors.synth.x=1`); await sleep(6500); // الشرح القصير (≈4ث) ثم اللعب
   ok('synthetic tilt reaches the game (ball hit first star)', /1\/5/.test(await c.ev(`document.getElementById('hScore').textContent`)), await c.ev(`document.getElementById('hScore').textContent`));
   await c.ev(`__engine.stopGame('exit')`); await sleep(200);
   ok('stopGame: sensor stopped', !(await c.ev('__engine.sensors.active()')), null);
@@ -69,12 +71,12 @@ try {
 
   // (5) مسار iOS: requestPermission تُستدعى من نقرة البطاقة (دون synth)، وقرار الرفض لا يشغّل شيئًا
   await c.nav(BASE + '/index.html?debug=1');
-  await click(card('كرة الميزان')); await sleep(2000);
+  await click(card('متاهة الميلان')); await sleep(2000);
   ok('iOS-shaped permission: requestPermission called for motion and orientation on card tap', (await c.ev('window.__perm')) === 2, await c.ev('window.__perm'));
   ok('granted ⇒ game ready with real listeners', await c.ev(`!!__engine.state() && __engine.state().ready`) && (await lis()) === '{"deviceorientation":1,"devicemotion":1}', await lis());
   await c.ev(`__engine.stopGame('exit')`); await sleep(200);
   await c.nav(BASE + '/index.html?debug=1&permission=denied');
-  await click(card('كرة الميزان')); await sleep(1500);
+  await click(card('متاهة الميلان')); await sleep(1500);
   ok('permission denied ⇒ Arabic error, game not started, no listeners', await c.ev(`!__engine.state() && /رُفض إذن/.test(document.getElementById('ovT').textContent)`) && (await lis()) === '{}', await c.ev(`document.getElementById('ovT').textContent`));
 
   // (6) حدود الأمان: لعبة لم تعلن القدرة، ورسالة مزوّرة

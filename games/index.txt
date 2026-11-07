@@ -1,11 +1,9 @@
 color-hunt.js
 freeze.js
-mole-air.js
 multi-lane.js
 zz-loop-test.js
-tilt-balance.js
 balloon-bop.js
-simon-zones.js
+hopscotch.js
 goalie.js
 lane-dodger.js
 bubble-mirror.js
@@ -13,3 +11,7 @@ tilt-maze.js
 pad-stars.js
 pad-tug.js
 pad-quick.js
+shape-road.js
+quiz.js
+math-race.js
+flashlight.js

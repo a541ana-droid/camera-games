@@ -5,6 +5,11 @@
 // @accent #4da3ff
 // @engine 0.2
 // @capabilities camera.motion audio haptic hud players.local
+// @players 2-4
+// @minutes 3
+// @age 4
+// @play camera
+// @style versus
 
 // إعدادات الأسرة (ENGINE.md §3.5): RS يضرب مدة الجولة، DIFF 0 سهل / 1 عادي (سلوك ما قبلها حرفيًا) / 2 صعب. by3(سهل، عادي، صعب).
 let RS = 1, DIFF = 1; const by3 = (e, m, h) => DIFF === 0 ? e : DIFF === 2 ? h : m;
