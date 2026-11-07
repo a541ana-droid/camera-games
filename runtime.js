@@ -153,10 +153,10 @@
     return qs.length ? Object.freeze({ id: str(p.id, 40), title: str(p.title, 40), questions: Object.freeze(qs) }) : null; })();
   function makeUi() {
     const lin = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }, lum = (r, g, b) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b); // سطوع نسبي (WCAG): فوق ≈0.18 يكون النص الداكن أوضح من الأبيض
-    const acc = /^#[0-9a-fA-F]{6}$/.test(SPEC.accent || '') ? SPEC.accent : '#7c6cff', ar = parseInt(acc.slice(1, 3), 16), ag = parseInt(acc.slice(3, 5), 16), ab = parseInt(acc.slice(5, 7), 16);
+    const acc = /^#[0-9a-fA-F]{6}$/.test(SPEC.accent || '') ? SPEC.accent : '#4da3ff', ar = parseInt(acc.slice(1, 3), 16), ag = parseInt(acc.slice(3, 5), 16), ab = parseInt(acc.slice(5, 7), 16);
     const TH = Object.freeze({
-      bg: '#0f0d1a', bg2: '#171429', surface: '#1f1b36', surfaceHi: '#2a2547', line: 'rgba(255,255,255,0.1)', fg: '#f4f1ff', mut: '#a9a3c4', brand: '#7c6cff', ok: '#3ddc97', warn: '#ffc145', bad: '#ff5d73',
-      accent: acc, onAccent: lum(ar, ag, ab) > 0.179 ? '#0f0d1a' : '#ffffff', font: 'sans-serif',
+      bg: '#0c0d10', bg2: '#141519', surface: '#1b1c21', surfaceHi: '#25262c', line: 'rgba(255,255,255,0.09)', fg: '#f5f5f7', mut: '#a1a1aa', brand: '#f5f5f7', ok: '#3ddc97', warn: '#ffc145', bad: '#ff5d73',
+      accent: acc, onAccent: lum(ar, ag, ab) > 0.179 ? '#0c0d10' : '#ffffff', font: 'sans-serif',
       teams: Object.freeze([Object.freeze({ name: 'الفريق أ', color: '#ff8a3d' }), Object.freeze({ name: 'الفريق ب', color: '#a37bff' })]),
       players: Object.freeze([['#4da3ff', 'circle', 'أزرق'], ['#ff6b8b', 'triangle', 'وردي'], ['#ffc145', 'square', 'أصفر'], ['#3ddc97', 'diamond', 'أخضر']].map(p => Object.freeze({ color: p[0], shape: p[1], name: p[2] })))
     });
@@ -368,7 +368,7 @@
           const go = k > 0.3, wv = says && go, a = wv ? Math.sin(T * 10) * 0.5 : 0;
           tok(c, 1, px, py, s * 0.3, wv ? 'cheer' : (go ? 'wow' : 'happy'), -0.6, -0.4, !says && go);
           if (wv) { emo(c, '👋', px - s * 0.22, py - s * 0.08, s * 0.15, -a, false); emo(c, '👋', px + s * 0.22, py - s * 0.08, s * 0.15, a, true); swish(c, px + s * 0.22, py - s * 0.1, s * 0.11, -1.24, Math.abs(Math.sin(T * 10)), lw); }
-          if (k > 0.55) { const f = ease((k - 0.55) / 0.15); disc(c, px + s * 0.25, py - s * 0.25, s * 0.07 * f, TH.ok); c.strokeStyle = '#0f0d1a'; c.lineWidth = lw * 1.1; c.lineCap = 'round'; c.lineJoin = 'round'; c.beginPath(); c.moveTo(px + s * 0.215, py - s * 0.25); c.lineTo(px + s * 0.24, py - s * 0.225); c.lineTo(px + s * 0.285, py - s * 0.275); c.stroke(); }
+          if (k > 0.55) { const f = ease((k - 0.55) / 0.15); disc(c, px + s * 0.25, py - s * 0.25, s * 0.07 * f, TH.ok); c.strokeStyle = '#0c0d10'; c.lineWidth = lw * 1.1; c.lineCap = 'round'; c.lineJoin = 'round'; c.beginPath(); c.moveTo(px + s * 0.215, py - s * 0.25); c.lineTo(px + s * 0.24, py - s * 0.225); c.lineTo(px + s * 0.285, py - s * 0.275); c.stroke(); }
           break;
         }
         case 'voice': {

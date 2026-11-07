@@ -1,4 +1,4 @@
-// الرئيسية 0.6.1 وحزم الأسئلة: الأقسام من @play، «نلعب الآن؟» يشغّل لعبة فعلًا، الرقائق، الصور المعتمدة فقط، طول صفحة الجوال،
+// الرئيسية 0.7.0 وحزم الأسئلة: بطاقات مربّعة بلون اللعبة، صف فئات واحد من @play، ورقة تفاصيل «العب» تشغّل فعلًا، رجوع ظاهر في كل صفحة فرعية، صفحة «على التلفاز»، لا عدّاد زوّار، «تواصل معنا»، الصور المعتمدة فقط،
 // وعقد api.pack (مجمّد، مخلوط، منظَّف)، وأسئلة العائلة: إنشاء/استيراد/مشاركة (ملف، رابط #quiz=، QR) ذهابًا وإيابًا، ورفض الاستيراد الملغوم.
 import { readFileSync } from 'node:fs';
 import { chrome, BASE, sleep } from './lib.mjs';
@@ -9,40 +9,46 @@ const wait = async (expr, ms = 8000) => { for (let t = 0; t < ms; t += 150) { if
 const games = rd('games/index.txt').split('\n').map(s => s.trim()).filter(s => /\.js$/.test(s) && !s.startsWith('zz-'));
 const endText = async () => { for (let i = 0; i < 40; i++) { const e = await c.ev(`(__engine.events.find(e=>e.n==='end')||{}).d||null`); if (e) return JSON.parse(e.text); await sleep(200); } return null; };
 try {
-  await c.nav(BASE + '/index.html?debug=1&nosw=1', 1500); await c.ev(`localStorage.clear()`); await c.nav(BASE + '/index.html?nosw=1', 2500);
-  // (1) الأقسام والبطاقات
-  const sh = await c.ev(`(()=>{const o={}; for (const id of ['shCamera','shPads','shDevice','quizGames']) o[id]=[...document.getElementById(id).querySelectorAll('.card')].map(b=>b.dataset.play+'|'+b.dataset.src); return o})()`);
-  const all = Object.values(sh).flat();
-  ok('every listed game has exactly one card, in #list', all.length === games.length && (await c.ev(`document.querySelectorAll('#list .card').length`)) === games.length, { n: all.length, games: games.length });
-  ok('sections follow @play (camera / pads / device), quiz games in «مسابقات»', sh.shCamera.every(x => x.startsWith('camera|')) && sh.shPads.every(x => x.startsWith('pads|')) && sh.shDevice.every(x => x.startsWith('device|')) && sh.shCamera.length >= 5 && sh.shPads.length >= 3, sh);
-  ok('cards show players · minutes · age line', await c.ev(`[...document.querySelectorAll('#list .card')].every(b=>b.querySelector('.meta'))`));
-  const imgs = await c.ev(`[...document.querySelectorAll('img')].map(i=>new URL(i.src).pathname)`), allowed = ['/icon.svg', ...['color-hunt', 'freeze', 'mole-air', 'multi-lane', 'tilt-balance'].map(n => '/games/' + n + '.cover.jpg')];
-  ok('only approved images (5 covers + icon); no series.jpg anywhere', imgs.every(p => allowed.includes(p)) && !rd('series.js').includes('series.jpg') && !rd('sw.js').includes('series.jpg'), imgs);
-  const tabs = await c.ev(`['tabHome','serBtn','tabMake','setBtn'].map(id=>{const b=document.getElementById(id), r=b.getBoundingClientRect(); return [id, r.height>=48 && b.offsetParent!==null]})`);
-  ok('tabs: home, league, make, settings reachable (≥48px)', tabs.every(t => t[1]), tabs);
-  ok('no old «▶ العب» button that only scrolled', !(await c.ev(`!!document.getElementById('playBtn')`)));
-  // (2) الرقائق
-  const n0 = await c.ev(`document.querySelectorAll('#list .card').length`);
-  await c.ev(`document.querySelector('[data-f=short]').click()`); await sleep(100);
-  const short = await c.ev(`[...document.querySelectorAll('#list .shrow .card')].map(b=>+b.dataset.minutes)`);
-  ok('chip «أقل من 3 د» keeps only short games', short.length > 0 && short.length < n0 && short.every(m => m && m < 3), short);
-  await c.ev(`document.querySelector('[data-f=all]').click()`); await sleep(100);
-  ok('chip «الكل» restores every card', (await c.ev(`document.querySelectorAll('#list .shrow .card').length`)) === n0);
-  // (3) «نلعب الآن؟» يشغّل لعبة مناسبة فعلًا
-  await c.ev(`document.querySelectorAll('#now .pc')[0].click()`); await sleep(50); await c.ev(`document.querySelectorAll('#now .hw')[2].click()`); await sleep(50);
-  let pick = await c.ev(`__engine.home.now()`);
-  ok('«نلعب الآن؟» 1 player + by phone suggests a device game', !!pick.pick && (await c.ev(`__engine.menuGames.find(g=>g.src===${JSON.stringify(pick.pick)}).meta.play`)) === 'device', pick);
-  await c.ev(`document.querySelectorAll('#now .pc')[2].click()`); await sleep(50); await c.ev(`document.querySelectorAll('#now .hw')[1].click()`); await sleep(100);
-  pick = await c.ev(`__engine.home.now()`); const p1 = pick.pick;
-  await c.ev(`document.getElementById('nowAlt').click()`); await sleep(60);
-  ok('«غيرها» changes the suggestion', (await c.ev(`__engine.home.now().pick`)) !== p1, [p1]);
-  await c.ev(`document.getElementById('nowGo').click()`); await sleep(800);
-  ok('«العب الآن» (pads) opens the TV lobby for that game', await c.ev(`!document.getElementById('tv').hidden && Pads.state().game === __engine.home.now().pick`), await c.ev(`Pads.state()&&Pads.state().game`));
-  await c.ev(`Pads.close(); __engine.show('menu')`);
+  await c.nav(BASE + '/index.html?debug=1&nosw=1', 1500); await c.ev(`localStorage.clear()`); await c.nav(BASE + '/index.html?nosw=1&net=bc', 2500); // net=bc: ردهة التلفاز بلا مرحّلات خارجية في الاختبار
+  // (1) البطاقات: بطاقة واحدة لكل لعبة في #list، بلونها واسمها وسطرها القصير وشارة اللاعبين
+  const cards = await c.ev(`[...document.querySelectorAll('#list .card')].map(b=>({src:b.dataset.src, play:b.dataset.play, ac:b.style.getPropertyValue('--ac'), bg:getComputedStyle(b).backgroundImage, name:(b.querySelector('b')||{}).textContent||'', d:(b.querySelector('small.d')||{}).textContent||'', pb:!!b.querySelector('.pb'), players:b.dataset.players}))`);
+  ok('every listed game has exactly one card, in #list', cards.length === games.length && new Set(cards.map(x => x.src)).size === games.length, { n: cards.length, games: games.length });
+  ok('each card: accent color + gradient background + name + short line (+ players badge when known)', cards.every(x => /^#[0-9a-f]{6}$/.test(x.ac) && /gradient/.test(x.bg) && x.name.trim() && x.d.trim() && (!x.players || x.pb)), cards.filter(x => !(x.ac && x.name && x.d)));
+  ok('short line is clamped (≤2 lines) and shorter than the full @desc', await c.ev(`[...document.querySelectorAll('#list .card small.d')].every(s=>getComputedStyle(s).webkitLineClamp==='2')`));
+  const imgs = await c.ev(`[...document.querySelectorAll('img')].map(i=>new URL(i.src).pathname)`), allowed = ['/icon.svg', '/art/league.cover.jpg', ...(await c.ev(`__engine.covers()`)).map(n => '/games/' + n + '.cover.jpg')];
+  ok('only approved images (COVERS + league + icon), every listed game has an approved cover; no series.jpg anywhere', imgs.every(p => allowed.includes(p)) && !rd('series.js').includes('series.jpg') && !rd('sw.js').includes('series.jpg') && games.every(g => allowed.includes('/games/' + g.replace(/\.js$/, '.cover.jpg'))), imgs);
+  const tabs = await c.ev(`['tabHome','serBtn','tabMake','setBtn','tvGuideBtn'].map(id=>{const b=document.getElementById(id), r=b.getBoundingClientRect(); return [id, r.height>=44 && b.offsetParent!==null]})`);
+  ok('nav: home, league, make, settings + «على التلفاز» reachable (≥44px)', tabs.every(t => t[1]), tabs);
+  ok('no «نلعب الآن؟» wizard, no filter-chip row, no shelves', await c.ev(`!document.getElementById('now') && !document.getElementById('chips') && !document.querySelector('.shelf,.fchip,#nowGo')`));
+  // (2) صف الفئات الواحد
+  const cats = await c.ev(`[...document.querySelectorAll('#cats [role=tab]')].map(b=>b.dataset.cat+':'+b.textContent.trim())`);
+  ok('one row of 5 category tabs: الكل · أمام الكاميرا · الجوالات أذرع · بيد الجوال · مسابقات', cats.join('|') === 'all:الكل|camera:أمام الكاميرا|pads:الجوالات أذرع|device:بيد الجوال|quiz:مسابقات', cats);
+  const vis = () => c.ev(`[...document.querySelectorAll('#list .card')].filter(b=>!b.hidden&&b.offsetParent).map(b=>b.dataset.play+'|'+b.dataset.src)`);
+  const quizSrcs = await c.ev(`__engine.menuEntries.filter(e=>e.quiz).map(e=>e.src)`);
+  const byCat = {};
+  for (const k of ['camera', 'pads', 'device', 'quiz']) { await c.ev(`document.getElementById('cat-${k}').click()`); await sleep(120); byCat[k] = { v: await vis(), sel: await c.ev(`document.getElementById('cat-${k}').getAttribute('aria-selected')`), quizBox: await c.ev(`!document.getElementById('quizBox').hidden`) }; }
+  ok('«أمام الكاميرا» / «الجوالات أذرع» / «بيد الجوال» show only their @play games (quiz games excluded)', ['camera', 'pads', 'device'].every(k => byCat[k].v.length && byCat[k].v.every(x => x.startsWith(k + '|') && !quizSrcs.includes(x.split('|')[1])) && byCat[k].sel === 'true' && !byCat[k].quizBox) && byCat.camera.v.length >= 5 && byCat.pads.v.length >= 3, Object.fromEntries(Object.entries(byCat).map(([k, v]) => [k, v.v.length])));
+  ok('«مسابقات»: quiz games + category tiles', byCat.quiz.v.length === quizSrcs.length && byCat.quiz.quizBox, byCat.quiz);
+  await c.ev(`document.getElementById('cat-all').click()`); await sleep(120);
+  ok('«الكل» shows every card again', (await vis()).length === games.length);
+  // (3) ورقة التفاصيل: الشرح كاملًا + «العب» يشغّل اللعبة فعلًا
+  const sheetSrc = byCat.pads.v[0].split('|')[1];
+  await c.ev(`document.querySelector('#list .card[data-src="${sheetSrc}"]').click()`); await sleep(300);
+  const sh = await c.ev(`(()=>{const s=document.getElementById('gsheet'); return s && {src:s.dataset.src, title:s.querySelector('h3').textContent, desc:(document.getElementById('gsD')||{}).textContent||'', meta:s.querySelector('.meta').textContent, play:!!document.getElementById('gsPlay'), focus:document.activeElement&&document.activeElement.id}})()`);
+  const fullDesc = /@desc (.*)/.exec(rd(sheetSrc))[1];
+  ok('tapping a card opens the details sheet: full explanation, players/minutes/age, big «العب» (focused)', sh && sh.src === sheetSrc && sh.desc === fullDesc && /لاعب/.test(sh.meta) && /د/.test(sh.meta) && sh.play && sh.focus === 'gsPlay', sh);
+  await c.ev(`document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}))`); await sleep(100);
+  ok('Escape closes the sheet, focus returns to the card', await c.ev(`!document.getElementById('gsheet') && document.activeElement && document.activeElement.dataset.src===${JSON.stringify(sheetSrc)}`));
+  const padSrc = byCat.pads.v[1].split('|')[1];
+  await c.ev(`__engine.home.open(${JSON.stringify(padSrc)})`); await sleep(200); await c.ev(`document.getElementById('gsPlay').click()`); await sleep(800);
+  ok('pads game: «العب» opens the TV lobby for that game', await c.ev(`!document.getElementById('tv').hidden && Pads.state().game === ${JSON.stringify(padSrc)} && !document.getElementById('gsheet')`), await c.ev(`Pads.state()&&Pads.state().game`));
+  ok('lobby: back control + «كيف أشغّلها على التلفاز؟» at the top', await c.ev(`(()=>{const b=document.getElementById('tvBack'), g=document.getElementById('tvHow'); return !!b && !!g && b.getBoundingClientRect().top < 120 && g.offsetParent!==null})()`));
+  await c.ev(`document.getElementById('tvHow').click()`); await sleep(200);
+  ok('lobby guide opens over the room (room kept)', await c.ev(`!!document.getElementById('guideDlg') && document.querySelectorAll('#guideDlg .gway').length===3 && !!Pads.state()`));
+  await c.ev(`document.querySelector('#guideDlg .back').click(); Pads.close(); __engine.show('menu')`);
   await c.nav(BASE + '/index.html?debug=1&nosw=1', 2000); await c.ev(`document.getElementById('synth').checked=true`);
-  await c.ev(`document.querySelectorAll('#now .pc')[1].click()`); await sleep(50); await c.ev(`document.querySelectorAll('#now .hw')[0].click()`); await sleep(100);
-  await c.ev(`__engine.events.length=0; document.getElementById('nowGo').click()`);
-  ok('«العب الآن» (camera) really starts a game', await wait(`!!(__engine.state()&&__engine.state().ready)`, 10000), await c.ev(`__engine.home.now()`));
+  await c.ev(`__engine.events.length=0; document.querySelector('#list .card[data-src="games/balloon-bop.js"]').click()`); await sleep(200); await c.ev(`document.getElementById('gsPlay').click()`);
+  ok('camera game: «العب» in the sheet really starts it', await wait(`!!(__engine.state()&&__engine.state().ready)`, 10000) && (await c.ev(`__engine.state().src`)) === 'games/balloon-bop.js');
   await c.ev(`__engine.stopGame('exit'); __engine.show('menu')`); await sleep(300);
   // (4) المسابقات: بلاطة لكل فئة + أسئلة العائلة
   const idx = JSON.parse(rd('games/quiz/index.json')).packs;
@@ -114,13 +120,42 @@ try {
   // ملف ملغوم عبر الاستيراد بالملف نفسه
   const bomb = await c.ev(`(async()=>{const a=new Uint8Array(3e6); const s=new Blob([a]).stream().pipeThrough(new CompressionStream('deflate-raw')); const u=new Uint8Array(await new Response(s).arrayBuffer()); let b=''; for (const x of u) b+=String.fromCharCode(x); const code='1.'+btoa(b).replace(/\\+/g,'-').replace(/\\//g,'_').replace(/=+$/,''); try { await QuizPacks.decode(code); return 'decoded'; } catch(e) { return 'rejected'; }})()`);
   ok('decompression bomb (3MB of zeros) rejected at the 1MB cap', bomb === 'rejected', bomb);
-  // (9) طول صفحة الجوال
-  await c.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  // (9) الجوال 375×812: عمودان من بطاقات مربّعة، رجوع ظاهر في كل صفحة فرعية، صفحة التلفاز، لا عدّاد زوّار، «تواصل معنا»
+  await c.send('Emulation.setDeviceMetricsOverride', { width: 375, height: 812, deviceScaleFactor: 1, mobile: true });
   await c.nav(BASE + '/index.html?nosw=1', 2500);
-  const ph = await c.ev(`({h: document.getElementById('menu').scrollHeight, hs: document.documentElement.scrollWidth <= 390 && document.getElementById('menu').scrollWidth <= 390, bar: getComputedStyle(document.getElementById('tabs')).position, min: Math.min(...[...document.querySelectorAll('#menu button')].filter(b=>b.offsetWidth&&!b.closest('[hidden]')).map(b=>Math.min(b.getBoundingClientRect().height, b.getBoundingClientRect().width)))})`);
-  ok('phone 390: page far shorter than 6695px, no horizontal page scroll, bottom tab bar, targets ≥44px', ph.h < 3200 && ph.hs && ph.bar === 'fixed' && ph.min >= 44, ph);
+  const ph = await c.ev(`(()=>{const l=document.getElementById('list'), cs=[...l.querySelectorAll('.card')].filter(b=>b.offsetParent).map(b=>b.getBoundingClientRect()); return {cols:getComputedStyle(l).gridTemplateColumns.split(' ').length, sq:cs.every(r=>Math.abs(r.width-r.height)<2), w:Math.round(cs[0].width), hs: document.documentElement.scrollWidth <= 375 && document.getElementById('menu').scrollWidth <= 375, bar:getComputedStyle(document.getElementById('tabs')).position, min:Math.min(...[...document.querySelectorAll('#menu button')].filter(b=>b.offsetWidth&&!b.closest('[hidden]')&&!b.classList.contains('card')).map(b=>Math.min(b.getBoundingClientRect().height, b.getBoundingClientRect().width))), firstCardTop: Math.round(cs[0].top)}})()`);
+  ok('phone 375: grid of 2 square cards per row, games visible in the first screen, no horizontal scroll, bottom tab bar, targets ≥44px', ph.cols === 2 && ph.sq && ph.w > 140 && ph.firstCardTop < 330 && ph.hs && ph.bar === 'fixed' && ph.min >= 44, ph);
+  await c.ev(`document.getElementById('serBtn').click()`); await sleep(1500);
+  const lg = await c.ev(`(()=>{const b=document.getElementById('serBack'); if(!b) return null; const r=b.getBoundingClientRect(); return {top:Math.round(r.top), w:Math.round(r.width), h:Math.round(r.height), vis:!document.getElementById('ser').hidden}})()`);
+  ok('league («الدوري») on 375: back control visible at the top immediately', lg && lg.vis && lg.top >= 0 && lg.top < 100 && lg.w >= 44 && lg.h >= 44, lg);
+  await c.ev(`document.getElementById('ser').scrollTop=2000`); await sleep(100);
+  ok('league back stays reachable after scrolling (sticky)', await c.ev(`(()=>{const r=document.getElementById('serBack').getBoundingClientRect(); return r.top>=0 && r.bottom<120})()`));
+  await c.ev(`document.getElementById('serBack').click()`); await sleep(200);
+  ok('league back returns to the home', await c.ev(`!document.getElementById('menu').hidden && document.getElementById('ser').hidden`));
+  for (const [open, id, name] of [[`document.getElementById('tabMake').click()`, 'makePage', 'make'], [`QuizPacks.open()`, 'famPage', 'quiz packs'], [`document.getElementById('tvGuideBtn').click()`, 'tvGuide', 'TV guide']]) {
+    await c.ev(open); await sleep(250);
+    const r = await c.ev(`(()=>{const p=document.getElementById('${id}'), b=p&&p.querySelector('.back'); if(!b||p.hidden) return null; const q=b.getBoundingClientRect(); return {top:Math.round(q.top), w:Math.round(q.width)}})()`);
+    ok(`${name} page on 375: back control at the top`, r && r.top >= 0 && r.top < 200 && r.w >= 44, r);
+    if (id !== 'tvGuide') await c.ev(`CGHome.go('home')`);
+  }
+  const gd = await c.ev(`(()=>{const g=document.getElementById('tvGuide'); return {site: document.getElementById('gSite').textContent, ways: g.querySelectorAll('.gway').length, tv: !!g.querySelector('#tvBtn'), join: !!g.querySelector('#joinBtn'), steps: g.querySelectorAll('.gway li').length, txt: g.textContent}})()`);
+  ok('TV guide: site address, 3 ways (smart-TV browser, HDMI, mirroring), numbered steps, open-screen + join buttons', gd.site === 'a541ana-droid.github.io/camera-games' && gd.ways === 3 && gd.steps >= 10 && gd.tv && gd.join && /HDMI/.test(gd.txt) && /AirPlay/.test(gd.txt) && /Miracast/.test(gd.txt) && /Chromecast/.test(gd.txt) && /انضم برمز/.test(gd.txt) && /إنترنت/.test(gd.txt) && /issues\/new/.test(await c.ev(`document.querySelector('#tvGuide a[href*="issues"]').href`)), { site: gd.site, ways: gd.ways, steps: gd.steps });
+  await c.ev(`document.getElementById('joinBtn').click()`); await sleep(400);
+  ok('guide «انضم برمز» opens the phone join screen', await c.ev(`!document.getElementById('pad').hidden && !!document.querySelector('#pad .pcode')`));
+  await c.nav(BASE + '/index.html?nosw=1', 2000);
+  await c.ev(`document.getElementById('footGuide').click()`); await sleep(200);
+  ok('footer link opens the TV guide too', await c.ev(`!document.getElementById('tvGuide').hidden`));
+  await c.ev(`CGHome.go('home'); document.getElementById('setBtn').click()`); await sleep(300);
+  const st = await c.ev(`(()=>{const s=document.getElementById('settings'), b=document.getElementById('setClose').getBoundingClientRect(); return {back: b.top>=0 && b.top<100, stats: !!document.getElementById('stats') || /زوّار الموقع/.test(document.body.innerHTML), issue: !!s.querySelector('#gContact ~ a, #gContact')&&!!s.querySelector('a[href="https://github.com/a541ana-droid/camera-games/issues/new"]'), mail: document.getElementById('mailL').hidden, html: s.innerHTML + document.getElementById('tvGuide').innerHTML + document.querySelector('.foot').innerHTML}})()`); st.at = /@|mailto/.test(st.html.replace(/https:\/\/[^"]*/g, '')); delete st.html;
+  ok('settings: back control at the top; no visitor counter anywhere; «تواصل معنا» with GitHub Issues; e-mail line hidden (CONTACT_EMAIL empty)', st.back && !st.stats && st.issue && st.mail && !st.at, st);
+  ok('visitor counter: hit/ once a day only, never get/, nothing rendered', /'hit\/'/.test(rd('engine.js')) && !/'get\/'/.test(rd('engine.js')) && !/statsL|id="stats"/.test(rd('index.html')));
+  await c.ev(`document.getElementById('setClose').click()`);
+  // التلفاز/الشاشة الكبيرة: 6 أعمدة
+  await c.send('Emulation.setDeviceMetricsOverride', { width: 1920, height: 1080, deviceScaleFactor: 1, mobile: false });
+  await c.nav(BASE + '/index.html?nosw=1', 2000);
+  ok('1920×1080: 6 cards per row', (await c.ev(`getComputedStyle(document.getElementById('list')).gridTemplateColumns.split(' ').length`)) === 6);
   // (10) «مسح بياناتي» يمسح أسئلة العائلة
   await c.ev(`__engine.wipeMine()`); ok('«مسح بياناتي» also wipes family packs', (await c.ev(`QuizPacks.list().length`)) === 0);
-  ok('no page errors', !c.log.some(l => /exception/i.test(l)), c.log.filter(l => /exception/i.test(l)).slice(0, 3));
+  ok('no page errors / console errors', !c.log.some(l => /exception|log\.error|console\.error/i.test(l)), c.log.filter(l => /exception|error/i.test(l)).slice(0, 3));
 } catch (e) { fails++; console.log('FAIL exception', e.message); }
 console.log(fails ? `\n${fails} FAILED` : '\nALL PASS'); c.close(); process.exit(fails ? 1 : 0);

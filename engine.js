@@ -1,13 +1,15 @@
 'use strict';
 // المضيف: يملك الكاميرا والصوت والحلقة والحارس والرسم. كود اللعبة يعمل في Web Worker قابل للإنهاء (terminate) ولا يعمل أي سطر منه في هذا الخيط. لا ثقة بشيء قادم منه.
 (() => {
-  const VERSION = '0.6.1', MAJOR = 0, BUDGET_MS = 8, HB_TIMEOUT = 2000, BOOT_TIMEOUT = 4000, ALIVE_TIMEOUT = 2500, MAX_GAME_BYTES = 200000;
+  const VERSION = '0.7.0', MAJOR = 0, BUDGET_MS = 8, HB_TIMEOUT = 2000, BOOT_TIMEOUT = 4000, ALIVE_TIMEOUT = 2500, MAX_GAME_BYTES = 200000;
   const KNOWN = ['camera.view', 'camera.color', 'camera.motion', 'camera.lowres', 'camera.calibrate', 'audio', 'haptic', 'hud', 'players.local', 'camera.lanes', 'camera.playercolors', 'audio.mic', 'motion.device', 'players.pads'];
   const PLANNED = ['qr', 'players.network', 'hand', 'pose'];
   const MAX_MSG_PER_S = 400, MAX_BYTES = new URLSearchParams(location.search).get('debug') === '1' ? 8192 : 2048, MAX_TRACKS = 4, MEM_LIMIT = 192e6;
   const memDetail = v => 'طلبت نحو ' + Math.round(n(v, 0, 1e12, 0) / 1e6) + ' ميغابايت.';
   const RATE = { 'mic.start': 5, 'audio.tone': 30, 'audio.melody': 10, haptic: 10, hud: 30, 'pads.say': 20, 'pads.vib': 20, 'pads.ctl': 10, 'pads.choices': 30, 'pads.touch': 30 };
   const $ = id => document.getElementById(id);
+  // بريد التواصل (0.7.0): المكان الوحيد له. فارغ ⇒ لا يظهر سطر البريد في «تواصل معنا» (الإعدادات ← حول)، ويبقى رابط GitHub Issues وحده.
+  const CONTACT_EMAIL = '';
   const vq = u => u + (u.includes('?') ? '&' : '?') + 'v=' + VERSION.replace(/\./g, ''); // ملفات يجلبها المحرك بنفسه تحمل رقم نسخته (كما في index.html) فلا يخدمها مخزن HTTP من نسخة أخرى؛ عامل الخدمة يتجاهل الاستعلام
   const qs = new URLSearchParams(location.search), DEBUG = qs.get('debug') === '1', ENDMAX = DEBUG ? 4000 : 300; // نص نهاية اللعبة: 300 حرفًا (4000 في ?debug=1 كي تحمل الاختبارات نتائجها)
   const DEBUG_NOSW = new URLSearchParams(location.search).get('nosw') === '1';
@@ -62,7 +64,7 @@
     return { players, minutes: mn >= 1 && mn <= 60 ? Math.round(mn) : null, age: Number.isInteger(ag) && ag >= 3 && ag <= 18 ? ag : null, play, style: String(h.style || '').split(/[\s|,]+/).filter(x => STYLES.includes(x)) };
   }
   // بصمة اللعبة (// @accent #rrggbb): غير صالحة أو قليلة التباين مع الخلفية الداكنة ⇒ لون المحرك الافتراضي (DESIGN.md §2). تُحسب منها درجتان للغلاف.
-  const BRAND = '#7c6cff', hex2 = c => [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16)), mix = (c, t, k) => '#' + hex2(c).map((v, i) => Math.round(v + (t[i] - v) * k).toString(16).padStart(2, '0')).join('');
+  const BRAND = '#4da3ff', hex2 = c => [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16)), mix = (c, t, k) => '#' + hex2(c).map((v, i) => Math.round(v + (t[i] - v) * k).toString(16).padStart(2, '0')).join('');
   const arn = String; // أرقام 0-9 كبقية الواجهة
   function accentOf(h) {
     const a = h && /^#[0-9a-f]{6}$/i.test(h.accent || '') ? h.accent.toLowerCase() : BRAND, l = hex2(a).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }), L = 0.2126 * l[0] + 0.7152 * l[1] + 0.0722 * l[2];
@@ -440,8 +442,11 @@
   const reasonFor = h => { const p = Sensors.last; if (!p) return ''; if (h.caps.includes('motion.device') && !p.motion) return NEED.motion; if (h.caps.some(c => c.startsWith('camera.')) && !p.camera && !($('synth').checked && window.DebugSynth)) return NEED.camera; return ''; };
   E.addCard = c => { cards.push(c); const r = reasonFor(c.h); c.b.disabled = !!r; c.n.textContent = r; c.n.hidden = !r; }; E.reasonFor = h => reasonFor(h);
   function applyAvail() { for (const c of cards) { const r = reasonFor(c.h); c.b.disabled = !!r; c.n.textContent = r; c.n.hidden = !r; } E.devices = Sensors.last; if (E.onAvail) E.onAvail(); }
-  // الصور المعتمدة فقط (قرار المالك، DESIGN.md §7): أغلفة هذه الألعاب الخمس. غيرها يأخذ غلافًا هندسيًا مولَّدًا بلون البصمة، بلا وجوه ولا شخصيات.
-  const COVERS = ['color-hunt', 'freeze', 'mole-air', 'multi-lane', 'tilt-balance'];
+  // الصور المعتمدة فقط (قرار المالك، DESIGN.md §7). لإضافة غلاف معتمد: ضع games/<الاسم>.cover.jpg وأضف <الاسم> هنا — سطر واحد، وتأخذه الرئيسية وورقة التفاصيل وردهة التلفاز.
+  // غيرها يأخذ غلافًا هندسيًا مولَّدًا بلون البصمة، بلا وجوه ولا شخصيات.
+  const COVERS = ['color-hunt', 'freeze', 'mole-air', 'multi-lane', 'tilt-balance', // 16:10، تُقصّ من الوسط في البطاقة المربّعة
+    'balloon-bop', 'bubble-mirror', 'flashlight', 'goalie', 'hopscotch', 'lane-dodger', 'math-race', 'pad-quick', 'pad-stars', 'pad-tug', 'quiz', 'shape-road', 'tilt-maze']; // 0.7.0: مربّعة 640×640 (اعتمدها المالك)؛ وغلاف الدوري art/league.cover.jpg في series.js
+  const coverOf = src => { const m = /^games\/([\w.-]+)\.js$/.exec(String(src || '')); return m && COVERS.includes(m[1]) ? 'games/' + m[1] + '.cover.jpg' : ''; }; E.coverOf = coverOf; E.covers = () => COVERS.slice();
   // تشغيل لعبة من بطاقة أو من «نلعب الآن؟»: ألعاب الجوالات تفتح ردهة التلفاز لتلك اللعبة؛ الحركة تطلب الإذن من النقرة نفسها
   function launchGame(src, h, pack) {
     if (pack !== undefined) pendingPack = pack ? { src, pack } : null;
@@ -481,7 +486,7 @@
       for (let gi = 0; gi < names.length; gi++) {
         const nm = names[gi]; if (texts[gi] == null) continue;
         const h = parseHeader(texts[gi]), mt = meta(h), src = 'games/' + nm; E.menuGames.push({ src, title: h.title || nm, meta: mt });
-        entries.push({ src, name: nm.replace(/\.js$/, ''), h, meta: mt, accent: accentOf(h), icons: capIcons(h.caps), cover: COVERS.includes(nm.replace(/\.js$/, '')) ? src.replace(/\.js$/, '.cover.jpg') : '', quiz: wantsPack(h, src) });
+        entries.push({ src, name: nm.replace(/\.js$/, ''), h, meta: mt, accent: accentOf(h), icons: capIcons(h.caps), cover: coverOf(src), quiz: wantsPack(h, src) });
       }
       E.menuEntries = entries; if (E.onMenu) E.onMenu(entries); // home.js يبني الأقسام والبطاقات (0.6.1)
     } catch (e) { list.prepend('تعذّر تحميل قائمة الألعاب'); }
@@ -511,6 +516,8 @@
       g.onkeydown = e => { const k = { ArrowRight: -1, ArrowLeft: 1, ArrowUp: -1, ArrowDown: 1 }[e.key]; if (!k) return; e.preventDefault(); const v = Math.min(2, Math.max(0, PR[g.dataset.p] + k)); setPref(g.dataset.p, v); paint(); g.querySelector('[data-v="' + v + '"]').focus(); }; // اتجاه العربية: السهم الأيسر = التالي
     }
     $('aboutVer').textContent = VERSION; $('setClose').onclick = closeSettings;
+    const mail = String(CONTACT_EMAIL || '').trim(), ml = $('mailL'); // يُبنى السطر فقط حين يُضبط البريد
+    if (ml && /^[^\s@<>"']+@[^\s@<>"']+\.[a-z]{2,}$/i.test(mail)) { const a = document.createElement('a'); a.className = 'btn sm'; a.href = 'mailto:' + mail; a.textContent = mail; a.dir = 'ltr'; ml.textContent = 'البريد '; ml.append(a); ml.hidden = false; }
     st.onclick = e => { if (e.target === st) closeSettings(); };
     st.onkeydown = e => { if (e.key === 'Escape') closeSettings(); };
     $('pWipe').onclick = () => {
@@ -550,16 +557,17 @@
   const MINE = 'myGames';
   const mineGet = () => { try { const a = JSON.parse(localStorage.getItem(MINE) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
   const mineSet = a => { try { localStorage.setItem(MINE, JSON.stringify(a)); return true; } catch (e) { return false; } };
-  function renderMine() {
+  function renderMine() { // 0.7.0: بطاقات مربّعة بلون اللعبة كبقية الرئيسية (الشكل الهندسي من home.js)
     const box = $('mine'), a = mineGet(); box.textContent = ''; $('mineSec').hidden = !a.length;
     for (const g of a) {
-      const h = parseHeader(g.text), ac = accentOf(h), b = document.createElement('div'), go = document.createElement('button'), del = document.createElement('button');
-      b.className = 'card'; b.style.setProperty('--ac', ac.c); b.style.borderInlineStart = '6px solid ' + ac.c;
-      go.className = 'card'; go.style.margin = '0'; go.style.border = '0'; const t = document.createElement('b'), d = document.createElement('small');
-      t.textContent = h.title || 'لعبة بلا اسم'; d.textContent = h.desc || ''; d.style.display = 'block'; d.style.color = 'var(--mut)'; go.append(t, d);
+      const h = parseHeader(g.text), ac = accentOf(h), t = h.title || 'لعبة بلا اسم', b = document.createElement('div'), go = document.createElement('button'), del = document.createElement('button');
+      b.className = 'card g mine'; b.style.setProperty('--ac', ac.c); b.style.setProperty('--ac-hi', ac.hi); b.style.setProperty('--ac-lo', ac.lo);
+      if (window.CGHome) b.append(CGHome.art({ h, meta: meta(h), accent: ac, cover: '', quiz: false }));
+      go.className = 'gfill'; go.type = 'button'; const tt = document.createElement('b'), d = document.createElement('small');
+      tt.textContent = t; d.className = 'd'; d.textContent = h.desc || ''; go.append(tt, d); go.setAttribute('aria-label', 'العب ' + t);
       go.onclick = () => { if (h.caps.includes('motion.device')) Sensors.permit(); startGame({ text: g.text }); };
-      del.className = 'del'; del.textContent = '✕'; del.setAttribute('aria-label', 'احذف ' + (h.title || 'اللعبة'));
-      del.onclick = () => { if (confirm('تحذف «' + (h.title || 'اللعبة') + '» من ألعابي؟')) { mineSet(mineGet().filter(x => x.id !== g.id)); renderMine(); } };
+      del.className = 'del'; del.type = 'button'; del.textContent = '✕'; del.setAttribute('aria-label', 'احذف ' + t);
+      del.onclick = () => { if (confirm('تحذف «' + t + '» من ألعابي؟')) { mineSet(mineGet().filter(x => x.id !== g.id)); renderMine(); } };
       b.append(go, del); box.append(b);
     }
   }
@@ -606,15 +614,13 @@
     go.onclick = async () => { if (!ev) return; ev.prompt(); const r = await ev.userChoice.catch(() => null); ev = null; if (r && r.outcome === 'accepted') box.hidden = true; };
     $('instNo').onclick = () => { box.hidden = true; try { localStorage.setItem('instLater', Date.now() + 7 * 864e5); } catch (e) { /* */ } };
   })();
-  // عدّاد الزوّار: خدمة مجانية بلا حساب ولا كوكيز (abacus)؛ كل جهاز يُحسب مرة في اليوم، ولا يُرسل شيء غير «زيارة». لا يعمل في الاختبار المحلي.
+  // عدّاد الزوّار: خدمة مجانية بلا حساب ولا كوكيز (abacus). 0.7.0: لا يُعرض في التطبيق (المالك يراه من الخدمة نفسها)؛ نرسل «زيارة» واحدة في اليوم لكل جهاز ولا نقرأ شيئًا. لا يعمل في الاختبار المحلي.
   (() => {
-    const out = $('stats'), B = 'https://abacus.jasoncameron.dev/', K = 'a541ana-camera-games/visits';
-    if (!out || DEBUG || !/github\.io$/.test(location.hostname)) return;
+    const B = 'https://abacus.jasoncameron.dev/', K = 'a541ana-camera-games/visits';
+    if (DEBUG || !/github\.io$/.test(location.hostname)) return;
     let day = ''; try { day = localStorage.getItem('visitDay') || ''; } catch (e) { /* */ }
-    const today = new Date().toISOString().slice(0, 10), op = day === today ? 'get/' : 'hit/';
-    fetch(B + op + K, { cache: 'no-store', credentials: 'omit', referrerPolicy: 'no-referrer' }).then(r => r.json()).then(j => {
-      if (typeof j.value === 'number') { out.textContent = j.value.toLocaleString('en-US'); if (op === 'hit/') try { localStorage.setItem('visitDay', today); } catch (e) { /* */ } }
-    }).catch(() => {});
+    const today = new Date().toISOString().slice(0, 10); if (day === today) return;
+    fetch(B + 'hit/' + K, { cache: 'no-store', credentials: 'omit', referrerPolicy: 'no-referrer' }).then(r => { if (r.ok) try { localStorage.setItem('visitDay', today); } catch (e) { /* */ } }).catch(() => {});
   })();
   if ('serviceWorker' in navigator && window.isSecureContext && !DEBUG_NOSW) navigator.serviceWorker.register('sw.js').then(r => Upd.watch(r)).catch(() => {});
   // الجوال كذراع (#pad=رمز): pad.js يتولّى الصفحة ولا تُبنى القائمة (أخفّ على الجوال)؛ تُبنى إن عاد إليها

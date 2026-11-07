@@ -1,8 +1,8 @@
 'use strict';
 // عامل الخدمة: يخزّن ملفات المحرك والألعاب مرة واحدة ثم يخدمها بلا شبكة. لا يطلب شيئًا من خارج الأصل ولا يرسل بيانات.
 // ربط الإصدار (ومعه ?v= في index.html وفي جلب المحرك لملفاته): غيّر VERSION هنا مع VERSION في engine.js (اختبار tests/run-portable.mjs يتحقق من تطابقهما) فيُنشأ مخزن جديد ويُحذف القديم.
-const VERSION = '0.6.1', CACHE = 'cam-games-' + VERSION;
-const CORE = ['./', 'index.html', 'engine.js', 'tracker.js', 'draw.js', 'runtime.js', 'launcher.js', 'mic.js', 'sensors.js', 'series.js', 'players.js', 'net.js', 'tv.js', 'pad.js', 'vendor/trystero-nostr.js', 'vendor/qrcode.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'quizpacks.js', 'home.js', 'games/index.txt', 'games/quiz/index.json'];
+const VERSION = '0.7.0', CACHE = 'cam-games-' + VERSION;
+const CORE = ['./', 'index.html', 'engine.js', 'tracker.js', 'draw.js', 'runtime.js', 'launcher.js', 'mic.js', 'sensors.js', 'series.js', 'players.js', 'net.js', 'tv.js', 'pad.js', 'vendor/trystero-nostr.js', 'vendor/qrcode.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'quizpacks.js', 'home.js', 'games/index.txt', 'games/quiz/index.json', 'art/league.cover.jpg'];
 addEventListener('install', e => e.waitUntil((async () => {
   const c = await caches.open(CACHE);
   await c.addAll(CORE.map(u => new Request(u, { cache: 'reload' })));

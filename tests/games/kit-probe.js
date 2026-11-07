@@ -10,13 +10,13 @@ function selfCheck() {
   const bad = [], ok = (n, v) => { if (!v) bad.push(n); };
   ok('num0', ui.num(0) === '0'); ok('num1234', ui.num(1234) === '1234'); ok('numNeg', ui.num(-5) === '‎−5'); ok('numRound', ui.num(2.6) === '3'); ok('numNaN', ui.num(NaN) === '0'); ok('numBig', ui.num(1e30).length < 20);
   ok('frozen', Object.isFrozen(ui) && Object.isFrozen(ui.theme) && Object.isFrozen(ui.theme.players));
-  ok('accent', ui.theme.accent === '#ff7a45' && ui.theme.onAccent === '#0f0d1a'); ok('players', ui.theme.players.length === 4 && ui.theme.players[2].shape === 'square' && ui.theme.players[0].color === '#4da3ff');
+  ok('accent', ui.theme.accent === '#ff7a45' && ui.theme.onAccent === '#0c0d10'); ok('players', ui.theme.players.length === 4 && ui.theme.players[2].shape === 'square' && ui.theme.players[0].color === '#4da3ff');
   const s = api.view.size(); ok('hitIn', ui.hit(R, 150 / s.w, 120 / s.h)); ok('hitOut', !ui.hit(R, 20 / s.w, 20 / s.h)); ok('hitSlop', ui.hit({ x: 100, y: 100, w: 100, h: 20 }, 150 / s.w, 92 / s.h)); // مدى لمس ≥ 48px
   const rw = ui.row(null, 3, 50, 40); ok('row', rw.length === 3 && rw[0].w > 0 && rw[0].x + rw[0].w <= rw[1].x && rw[2].x + rw[2].w <= s.w + 0.001);
   ok('rowReuse', ui.row(rw, 2, 50, 40) === rw && rw.length === 2);
   ok('noEngineLeak', typeof ui['update'] === 'undefined' && typeof ui['_step'] === 'undefined'); // الخطوة داخلية؛ المفاتيح كلها معلنة
   report = Object.keys(ui).sort();
-  try { ui.theme.bg = '#fff'; ok('themeImmutable', ui.theme.bg === '#0f0d1a'); } catch (e) { /* التجميد في وضع صارم يرمي: مقبول */ }
+  try { ui.theme.bg = '#fff'; ok('themeImmutable', ui.theme.bg === '#0c0d10'); } catch (e) { /* التجميد في وضع صارم يرمي: مقبول */ }
   return bad;
 }
 defineGame({

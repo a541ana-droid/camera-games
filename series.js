@@ -7,12 +7,14 @@
   const MAXP = 4, MAXR = 20, PATH = /^[\w./-]+\.js$/;
   let ph = 'idle', st = null, cfg = { n: 2, names: [], pick: null, rounds: 5, teams: false }, catalog = null; // ph: idle | setup | prep | playing | standings | final
   const arn = String;
-  // 0.6.1: بلا صورة رأس (كانت فيها شخصيات بوجوه، خلاف DESIGN.md §8): شريط بألوان اللاعبين الأربعة فقط
-  const hero = () => h('div', { className: 'sband', 'aria-hidden': 'true' });
+  // 0.7.0: غلاف الدوري المعتمد (art/league.cover.jpg) رأسًا لصفحتَي الإعداد والترتيب النهائي؛ يختفي إن تعذّر تحميله
+  const cover = () => { const i = h('img', { className: 'scover', src: 'art/league.cover.jpg', alt: '', decoding: 'async' }); i.onerror = () => i.remove(); return i; };
   const h = (tag, p, ...kids) => { const e = document.createElement(tag); Object.assign(e, p || {}); e.append(...kids.filter(k => k != null)); return e; };
   const btn = (t, f, cls) => h('button', { textContent: t, className: cls || '', onclick: f });
   const view = (...kids) => { const v = $('ser'); v.textContent = ''; v.append(...kids.filter(k => k != null)); v.scrollTop = 0; E.show('ser'); };
   const defName = i => 'لاعب ' + AR[i];
+  // 0.7.0: زرّ رجوع ظاهر أعلى الصفحة فورًا (على الجوال كان «رجوع» في آخر الصفحة فقط)
+  const topBar = (t, back) => { const b = h('button', { className: 'back', type: 'button', id: 'serBack', onclick: back }); b.setAttribute('aria-label', 'رجوع'); b.append(window.CGHome ? CGHome.icon('back') : '→'); return h('div', { className: 'subh' }, b, h('h2', 0, t)); };
 
   // ---------- المنطق (بلا DOM) ----------
   const num = v => (typeof v === 'number' && isFinite(v)) ? Math.max(-1e9, Math.min(1e9, v)) : null;
@@ -106,9 +108,9 @@
     const rk = o.map((i, k) => (r = (k && st.pts[i] === st.pts[o[k - 1]] && st.raw[i] === st.raw[o[k - 1]]) ? r : k + 1));
     st.rank = o.map((i, k) => ({ i, rank: rk[k] }));
     if (st.teams) { st.teamRank = st.tpts[0] === st.tpts[1] && st.traw[0] === st.traw[1] ? [1, 1] : (st.tpts[0] > st.tpts[1] || (st.tpts[0] === st.tpts[1] && st.traw[0] > st.traw[1])) ? [1, 2] : [2, 1];
-      return view(hero(), h('h1', 0, 'الترتيب النهائي'), h('p', { style: 'font-size:22px' }, st.teamRank[0] === st.teamRank[1] ? 'تعادل الفريقان' : '🏆 فاز ' + TN[st.teamRank[0] === 1 ? 0 : 1]), teamRows(null, null),
+      return view(topBar('الترتيب النهائي', () => { ph = 'idle'; E.show('menu'); }), cover(), h('p', { style: 'font-size:22px' }, st.teamRank[0] === st.teamRank[1] ? 'تعادل الفريقان' : '🏆 فاز ' + TN[st.teamRank[0] === 1 ? 0 : 1]), teamRows(null, null),
         btn('سلسلة جديدة', open, 'pri sbig'), btn('القائمة', () => { ph = 'idle'; E.show('menu'); }, 'sbig')); }
-    view(hero(), h('h1', 0, 'الترتيب النهائي'), st.log.length ? null : h('p', 0, 'لم تُلعب أي لعبة.'),
+    view(topBar('الترتيب النهائي', () => { ph = 'idle'; E.show('menu'); }), cover(), st.log.length ? null : h('p', 0, 'لم تُلعب أي لعبة.'),
       h('div', 0, ...o.map((i, k) => h('div', { className: 'srow' + (rk[k] === 1 ? ' top' : '') }, h('span', 0, (medal[rk[k] - 1] || AR[rk[k] - 1] + '.') + ' ' + st.names[i], h('small', 0, N === 1 ? 'مجموع الدرجات ' + arn(st.raw[i]) : '')), h('span', 0, arn(st.pts[i]) + ' نقطة')))),
       btn('سلسلة جديدة', open, 'pri sbig'), btn('القائمة', () => { ph = 'idle'; E.show('menu'); }, 'sbig'));
   }
@@ -127,7 +129,8 @@
     const chips = (vals, on, f) => h('div', { className: 'row' }, ...vals.map(v => btn(AR[v - 1], () => f(v), 'chip' + (v === on ? ' on' : ''))));
     const inputs = []; for (let i = 0; i < cfg.n; i++) inputs.push(h('input', { type: 'text', maxLength: 16, placeholder: defName(i), value: cfg.names[i] || '', oninput: e => { cfg.names[i] = e.target.value; } }));
     const k = cfg.pick.size;
-    view(hero(), h('h1', 0, 'دوري'),
+    view(topBar('الدوري', () => { ph = 'idle'; E.show('menu'); }), cover(),
+      h('p', { style: 'color:var(--mut);margin:0 auto 8px' }, 'سلسلة ألعاب على هذا الجهاز بنقاط تتجمّع: من يجمع أكثر يفوز.'),
       h('label', 0, 'عدد اللاعبين (على هذا الجهاز)'), chips([1, 2, 3, 4], cfg.n, v => { cfg.n = v; setup(); }), h('div', { className: 'row' }, ...inputs),
       cfg.n >= 2 ? h('label', 0, 'طريقة اللعب') : null, cfg.n >= 2 ? h('div', { className: 'row' }, btn('كلٌّ لنفسه', () => { cfg.teams = false; setup(); }, 'chip' + (cfg.teams ? '' : ' on')), btn('فريقان (أ / ب)', () => { cfg.teams = true; setup(); }, 'chip' + (cfg.teams ? ' on' : ''))) : null,
       cfg.n >= 2 && cfg.teams ? h('p', { style: 'color:var(--mut);font-size:14px' }, 'الفريق أ: اللاعبون 1 و3 — الفريق ب: 2 و4. الفريق الفائز في كل لعبة يأخذ نقطتين والآخر نقطة.') : null,

@@ -126,11 +126,12 @@
     const v = view(); v.textContent = ''; E.show('tv');
     const url = padUrl();
     const qr = h('canvas', { className: 'qr', width: 600, height: 600, 'aria-label': 'رمز QR للانضمام' });
-    const top = h('header', { className: 'tvtop' }, h('button', { className: 'ico', onclick: () => { close(); E.show('menu'); }, 'aria-label': 'رجوع إلى القائمة' }, '→'), h('h1', 0, '📺 العب بالجوالات'),
-      h('span', { className: 'tvnet', id: 'tvNet' }, ''));
+    const back = h('button', { className: 'ico back', id: 'tvBack', onclick: () => { close(); E.show('menu'); }, 'aria-label': 'رجوع إلى القائمة' }); back.append(window.CGHome ? CGHome.icon('back') : '→');
+    const how = h('button', { className: 'tvhelp', id: 'tvHow', onclick: () => window.CGHome && CGHome.guide() }); how.append(window.CGHome ? CGHome.icon('help') : '', 'كيف أشغّلها على التلفاز؟');
+    const top = h('header', { className: 'tvtop' }, back, h('h1', 0, '📺 العب بالجوالات'), h('span', { className: 'tvnet', id: 'tvNet' }, ''), how); // 0.7.0: رجوع ظاهر، وشرح التشغيل على التلفاز فوق الردهة دون إغلاق الغرفة
     const join = h('section', { className: 'tvjoin' }, qr, h('div', { className: 'tvhow' }, 'امسح الرمز بكاميرا الجوال'),
       h('div', { className: 'tvcode', dir: 'ltr', id: 'tvCode', 'aria-label': 'رمز الغرفة ' + S.code.split('').join(' ') }, ...S.code.split('').map(ch => h('b', 0, ch))),
-      h('small', { className: 'tvurl' }, 'أو افتح ', h('span', { dir: 'ltr' }, location.host + location.pathname.replace(/index\.html$/, '')), ' واضغط «📱 انضم» واكتب الرمز'));
+      h('small', { className: 'tvurl' }, 'أو افتح ', h('span', { dir: 'ltr' }, location.host + location.pathname.replace(/index\.html$/, '')), ' في الجوال، واضغط «على التلفاز» ثم «انضم برمز» واكتب الرمز'));
     const right = h('section', { className: 'tvside' }, h('h2', 0, 'اللاعبون'), h('div', { className: 'tvplayers', id: 'tvPlayers' }),
       h('h2', 0, 'طريقة اللعب'), h('div', { className: 'tvmodes', id: 'tvModes' }), h('h2', 0, 'اللعبة'), h('div', { className: 'tvgames', id: 'tvGames' }),
       h('div', { className: 'tvgo' }, h('button', { className: 'pri big', id: 'tvStart', onclick: start }, '▶ ابدأ اللعب'), h('span', { id: 'tvWhy' })));
@@ -176,7 +177,7 @@
     const mb = $('tvModes'), gb = $('tvGames'); if (!mb || !gb) return; const g = S.catalog && S.catalog.find(x => x.src === S.game);
     mb.textContent = ''; for (const [k, t] of MODES) { const ok = !g || g.modes.includes(k); mb.append(h('button', { className: 'chip' + (S.mode === k ? ' on' : ''), disabled: !ok, onclick: () => { setMode(k); changed(); } }, h('b', 0, t), h('small', 0, MODEDESC[k]))); }
     gb.textContent = ''; for (const x of S.catalog || []) {
-      const img = h('img', { className: 'gpic', src: x.src.replace(/\.js$/, '.cover.jpg'), alt: '' }); img.onerror = () => img.remove();
+      const cv = E.coverOf ? E.coverOf(x.src) : '', img = cv ? h('img', { className: 'gpic', src: cv, alt: '' }) : null; if (img) img.onerror = () => img.remove(); // الأغلفة المعتمدة فقط (0.7.0: كان يطلب غلافًا لكل لعبة ⇒ أخطاء 404 في كل رسم للردهة)
       gb.append(h('button', { className: 'gcard' + (S.game === x.src ? ' on' : ''), style: '--ac:' + x.accent, onclick: () => { S.game = x.src; if (!x.modes.includes(S.mode)) setMode(x.modes[0]); changed(); } }, img, h('b', 0, x.title), h('small', 0, x.desc || '')));
     }
     const why = reason(); $('tvStart').disabled = !!why; $('tvWhy').textContent = why || 'أو يبدأ أول لاعب من جواله';
@@ -246,7 +247,7 @@
     state: () => S && { code: S.code, phase: S.phase, mode: S.mode, game: S.game, kind: S.net.kind, status: S.status, url: S ? padUrl() : '', last: S.last, pads: window.Pads.snapshot(), reason: reason(), rtt: S.slots.filter(Boolean).map(p => p.rtt) }
   };
   // القائمة: زرّ «العب بالجوالات»، واقتراحه تلقائيًا على شاشة كبيرة بلا لمس
-  const tvBtn = $('tvBtn'); if (tvBtn) tvBtn.onclick = () => open();
+  // زرّا «افتح شاشة العرض» في الرئيسية وصفحة الشرح يبنيهما home.js ويستدعيان Pads.open()
   const big = innerWidth >= 1200 && navigator.maxTouchPoints === 0 && !matchMedia('(pointer:coarse)').matches;
   if (big && $('tvHint')) { $('tvHint').hidden = false; $('tvHintGo').onclick = () => open(); }
 })();
