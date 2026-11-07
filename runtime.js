@@ -197,14 +197,213 @@
       c.globalAlpha = still ? 1 : 0.82 + 0.18 * Math.sin(tAnim * 4); c.fillStyle = TH.accent; rr(c, cx - w / 2, cy - h / 2, w, h, h / 2); c.fill(); c.globalAlpha = 1; txt(c, s, cx, cy, px, TH.onAccent, true);
     }
     function pill(c, cx, cy, w, h, fill, line) { rr(c, cx - w / 2, cy - h / 2, w, h, h / 2); c.fillStyle = fill; c.fill(); if (line) { c.lineWidth = 2; c.strokeStyle = line; c.stroke(); } }
+    // ----- الشرح القصير قبل اللعب (0.5.1، ENGINE.md §3.3): ui.countdown يعرض مشهدًا متحرّكًا ≈3.5ث بدل الأرقام إن كان للعبة // @howto والإعداد مفعّل -----
+    // كل شيء هنا أوامر رسم عادية (بلا تدرّجات ولا كائنات في كل إطار): بطاقة + مشهد مقصوص فيها + الجملة + حلقة 3-2-1 صغيرة.
+    const ACTS = ['wave', 'wave-lane', 'freeze', 'show-color', 'tilt', 'hand-zone', 'block', 'dodge', 'pop', 'push-up', 'joystick', 'tap-beat', 'react', 'tap', 'voice', 'simon'];
+    const HS = SPEC.howto, HOW = HS && typeof HS.text === 'string' && HS.text.trim() ? { text: HS.text.trim().slice(0, 60), act: ACTS.includes(HS.act) ? HS.act : actOf() } : null;
+    function actOf() { // بلا // @howto-act: فعل يُشتقّ من القدرات المعلنة
+      if (caps.has('players.pads')) return 'joystick'; if (caps.has('motion.device')) return 'tilt'; if (caps.has('audio.mic')) return 'voice';
+      if (caps.has('camera.lanes')) return 'wave-lane'; if (caps.has('camera.color')) return 'show-color'; if (caps.has('camera.motion')) return 'wave'; return 'tap';
+    }
+    const HOWMIN = 3.5, TAU = 6.2832, MO = { mood: 'happy', look: { x: 0, y: 0 }, still: false }, DASH = [0, 0], ZSEQ = [4, 2, 6, 1, 8, 3], BX = [-0.36, -0.17, 0.02, 0.22, 0.38];
+    const CAM = new Set(['wave', 'wave-lane', 'freeze', 'show-color', 'hand-zone', 'block', 'dodge', 'pop', 'push-up']);
+    const ease = v => { v = cl01(v); return v * v * (3 - 2 * v); };
+    function masc(c, i, x, y, sz, mood, lx, ly, st) { if (!MASC) return; MO.mood = mood; MO.look.x = lx || 0; MO.look.y = ly || 0; MO.still = still || !!st; MASC.draw(c, i, x, y, sz, MO, tAnim); }
+    function emo(c, s, x, y, px, rot, flip) { c.save(); c.translate(x, y); if (rot) c.rotate(rot); if (flip) c.scale(-1, 1); c.font = F(px); c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#ffffff'; c.fillText(s, 0, 0); c.restore(); }
+    function disc(c, x, y, r, col, a) { c.globalAlpha = a == null ? 1 : a; c.fillStyle = col; c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill(); c.globalAlpha = 1; }
+    function ring(c, x, y, r, col, lw, a) { c.globalAlpha = a == null ? 1 : a; c.strokeStyle = col; c.lineWidth = lw; c.beginPath(); c.arc(x, y, r, 0, TAU); c.stroke(); c.globalAlpha = 1; }
+    function swish(c, x, y, r, a0, k, lw) { c.save(); c.globalAlpha = 0.3 + 0.5 * k; c.strokeStyle = TH.fg; c.lineWidth = lw; c.lineCap = 'round'; c.beginPath(); c.arc(x, y, r, a0 - 0.55, a0 + 0.55); c.stroke(); c.beginPath(); c.arc(x, y, r * 1.3, a0 - 0.4, a0 + 0.4); c.stroke(); c.restore(); }
+    function burst(c, x, y, r, k, col) {
+      if (k < 0 || k > 1) return; c.save(); c.globalAlpha = 1 - k; c.strokeStyle = col; c.lineWidth = Math.max(2, r * 0.12); c.lineCap = 'round'; c.beginPath();
+      for (let j = 0; j < 8; j++) { const a = j * 0.7854 + 0.39, ca = Math.cos(a), sa = Math.sin(a), r0 = r * (0.45 + k * 0.6), r1 = r * (0.8 + k * 0.9); c.moveTo(x + ca * r0, y + sa * r0); c.lineTo(x + ca * r1, y + sa * r1); }
+      c.stroke(); c.restore();
+    }
+    function star(c, x, y, r, col) { c.fillStyle = col; c.beginPath(); for (let j = 0; j < 10; j++) { const a = -1.5708 + j * 0.62832, q = j & 1 ? r * 0.45 : r; c.lineTo(x + Math.cos(a) * q, y + Math.sin(a) * q); } c.closePath(); c.fill(); }
+    function device(c, x, y, w, h) { rr(c, x - w / 2, y - h / 2, w, h, Math.min(w, h) * 0.2); c.fillStyle = '#0b0916'; c.fill(); c.lineWidth = Math.max(2, Math.min(w, h) * 0.035); c.strokeStyle = 'rgba(244,241,255,0.55)'; c.stroke(); const m = Math.min(w, h) * 0.09; rr(c, x - w / 2 + m, y - h / 2 + m, w - 2 * m, h - 2 * m, Math.min(w, h) * 0.12); c.fillStyle = TH.bg2; c.fill(); }
+    function chev(c, x, y, r, ang, col) { // سهم مرسوم (بدل ⬆️/⬅️ المربّعة)
+      c.save(); c.translate(x, y); c.rotate(ang); c.strokeStyle = col || TH.fg; c.lineWidth = r * 0.42; c.lineCap = 'round'; c.lineJoin = 'round';
+      c.beginPath(); c.moveTo(-r * 0.75, r * 0.45); c.lineTo(0, -r * 0.35); c.lineTo(r * 0.75, r * 0.45); c.stroke(); c.restore();
+    }
+    function arrowArc(c, x, y, r, a0, a1, lw) {
+      c.strokeStyle = TH.fg; c.fillStyle = TH.fg; c.lineWidth = lw; c.lineCap = 'round'; c.beginPath(); c.arc(x, y, r, a0, a1); c.stroke();
+      for (let e = 0; e < 2; e++) { const a = e ? a1 : a0, d = e ? 1 : -1, px = x + Math.cos(a) * r, py = y + Math.sin(a) * r, tx = -Math.sin(a) * d, ty = Math.cos(a) * d, nx = Math.cos(a), ny = Math.sin(a), h = lw * 2.4;
+        c.beginPath(); c.moveTo(px + tx * h, py + ty * h); c.lineTo(px + nx * h * 0.8, py + ny * h * 0.8); c.lineTo(px - nx * h * 0.8, py - ny * h * 0.8); c.closePath(); c.fill(); }
+    }
+    function pressBtn(c, x, y, r, col, down, T) { // زرّ جوال كبير وإصبع يضغطه من فوق
+      disc(c, x, y + r * 0.12, r, 'rgba(0,0,0,0.45)'); disc(c, x, y + (down ? r * 0.1 : 0), r * (down ? 0.94 : 1), col);
+      emo(c, '👇', x + r * 0.15, y - r * (down ? 0.75 : 1.25), r * 1.25);
+    }
+    function scene(c, act, x, y, s, T) {
+      const lw = Math.max(3, s * 0.018);
+      switch (act) {
+        case 'wave': {
+          const a = Math.sin(T * 9) * 0.45, k = Math.abs(Math.sin(T * 9));
+          masc(c, 1, x, y + s * 0.17, s * 0.4, 'cheer', 0, -0.4);
+          emo(c, '👋', x - s * 0.29, y - s * 0.13, s * 0.22, -a, false); emo(c, '👋', x + s * 0.29, y - s * 0.13, s * 0.22, a, true);
+          swish(c, x - s * 0.29, y - s * 0.15, s * 0.16, -1.9, k, lw); swish(c, x + s * 0.29, y - s * 0.15, s * 0.16, -1.24, k, lw); break;
+        }
+        case 'wave-lane': {
+          const n = 3, lwid = s / n, x0 = x - s / 2, top = y - s / 2, fy = top + s * 0.2, base = top + s * 0.66;
+          for (let i = 0; i < n; i++) { c.globalAlpha = 0.1; c.fillStyle = PCOL[i]; c.fillRect(x0 + i * lwid, top, lwid, s); } c.globalAlpha = 1;
+          c.save(); DASH[0] = DASH[1] = s * 0.025; c.setLineDash(DASH); c.strokeStyle = 'rgba(244,241,255,0.35)'; c.lineWidth = lw * 0.7; c.beginPath();
+          for (let i = 1; i < n; i++) { c.moveTo(x0 + i * lwid, top); c.lineTo(x0 + i * lwid, top + s); } c.stroke(); c.restore();
+          const q = s / 14; for (let j = 0; j < 14; j++) { c.fillStyle = j & 1 ? TH.bg : TH.fg; c.fillRect(x0 + j * q, fy - q * 0.5, q, q); }
+          for (let i = 0; i < n; i++) {
+            const lx = x0 + lwid * (i + 0.5), p = cl01(T * (0.4 - i * 0.05)), my = base - p * (base - fy - lwid * 0.22), win = p >= 1;
+            masc(c, i, lx, my, lwid * 0.5, win ? 'cheer' : 'happy', 0, -1);
+            const a = Math.sin(T * 10 + i * 1.7) * 0.5; emo(c, '👋', lx, top + s * 0.86, lwid * 0.42, a, i === 0);
+            swish(c, lx, top + s * 0.84, lwid * 0.3, -1.5708, Math.abs(Math.sin(T * 10 + i * 1.7)), lw * 0.7);
+          }
+          break;
+        }
+        case 'freeze': {
+          const ph = T % 2.2, dance = ph < 1.3;
+          if (!dance) { c.globalAlpha = 0.16; c.fillStyle = '#9fd0ff'; c.fillRect(x - s / 2, y - s / 2, s, s); c.globalAlpha = 1; }
+          for (let i = 0; i < 3; i++) { const mx = x + (i - 1) * s * 0.3, dy = dance ? -Math.abs(Math.sin(T * 6 + i * 1.3)) * s * 0.09 : 0; masc(c, i, mx, y + s * 0.2 + dy, s * 0.26, dance ? 'cheer' : 'wow', 0, 0, !dance); }
+          if (dance) for (let j = 0; j < 3; j++) { const q = (T * 0.7 + j / 3) % 1; c.globalAlpha = cl01(1.2 - q); emo(c, '🎵', x + (j - 1) * s * 0.3 + Math.sin(T * 3 + j) * s * 0.04, y - s * 0.08 - q * s * 0.28, s * 0.11); c.globalAlpha = 1; }
+          else { const k = ease((ph - 1.3) / 0.15); emo(c, '✋', x, y - s * 0.2, s * 0.26 * (0.6 + 0.4 * k)); emo(c, '❄️', x - s * 0.3, y - s * 0.28, s * 0.1); emo(c, '❄️', x + s * 0.32, y - s * 0.24, s * 0.08); }
+          break;
+        }
+        case 'show-color': {
+          const cyc = 1.75, k = (T % cyc) / cyc, col = PCOL[(Math.floor(T / cyc) + 2) % 4], tx = x + s * 0.05, ty = y - s * 0.08, R = s * 0.19;
+          c.save(); DASH[0] = s * 0.04; DASH[1] = s * 0.03; c.setLineDash(DASH); ring(c, tx, ty, R, col, lw * 1.3); c.restore();
+          const m = ease(k / 0.45), bx = tx + (1 - m) * s * 0.3, by = ty + (1 - m) * s * 0.36;
+          if (k > 0.45) { const f = cl01((k - 0.45) / 0.33); c.strokeStyle = TH.ok; c.lineWidth = lw * 1.4; c.lineCap = 'round'; c.beginPath(); c.arc(tx, ty, R * 1.22, -1.5708, -1.5708 + TAU * f); c.stroke(); }
+          disc(c, bx, by, s * 0.1, col); disc(c, bx - s * 0.03, by - s * 0.035, s * 0.025, '#ffffff', 0.6); emo(c, '✋', bx + s * 0.075, by + s * 0.085, s * 0.16, -0.6);
+          if (k > 0.78) { burst(c, tx, ty, R * 1.3, (k - 0.78) / 0.22, TH.ok); txt(c, '✓', tx, ty - R * 1.55, s * 0.12, TH.ok, true, 'center', true); }
+          masc(c, 2, x - s * 0.31, y + s * 0.3, s * 0.24, k > 0.78 ? 'cheer' : 'happy', 1, -0.6); break;
+        }
+        case 'tilt': {
+          const a = Math.sin(T * 2.4) * 0.34, lag = Math.sin(T * 2.4 - 0.9), pw = s * 0.8, ph = s * 0.44;
+          arrowArc(c, x, y + s * 0.95, s * 1.25, -1.5708 - 0.24, -1.5708 + 0.24, lw);
+          c.save(); c.translate(x, y + s * 0.05); c.rotate(a); device(c, 0, 0, pw, ph);
+          star(c, pw * 0.33, 0, ph * 0.16, TH.warn); star(c, -pw * 0.33, 0, ph * 0.16, TH.warn);
+          masc(c, 0, lag * pw * 0.26, ph * 0.04, ph * 0.46, 'wow', lag, 0.3); c.restore();
+          masc(c, 3, x + s * 0.34, y + s * 0.38, s * 0.18, 'happy', -0.6, -0.6); break;
+        }
+        case 'hand-zone': case 'block': {
+          const n = 3, gs = s * 0.84, cs = gs / n, gx = x - gs / 2, gy = y - gs / 2, cyc = 1.15, ci = Math.floor(T / cyc), k = (T % cyc) / cyc, cur = ZSEQ[ci % 6], prv = ZSEQ[(ci + 5) % 6], hit = k > 0.5;
+          for (let j = 0; j < 9; j++) { rr(c, gx + (j % 3) * cs + cs * 0.06, gy + Math.floor(j / 3) * cs + cs * 0.06, cs * 0.88, cs * 0.88, cs * 0.16); c.fillStyle = j === cur ? (hit ? 'rgba(61,220,151,0.35)' : 'rgba(255,193,69,0.22)') : 'rgba(42,37,71,0.7)'; c.fill(); }
+          const ccx = gx + (cur % 3 + 0.5) * cs, ccy = gy + (Math.floor(cur / 3) + 0.5) * cs, pcx = gx + (prv % 3 + 0.5) * cs, pcy = gy + (Math.floor(prv / 3) + 0.5) * cs;
+          if (act === 'block') { if (!hit) emo(c, '⚽', ccx, ccy, cs * (0.15 + 0.5 * cl01(k / 0.5))); }
+          else if (!hit || k < 0.62) masc(c, ci % 4, ccx, ccy + cs * 0.05, cs * 0.62 * ease(k / 0.2), hit ? 'wow' : 'happy');
+          const m = ease((k - 0.05) / 0.4); emo(c, '✋', pcx + (ccx - pcx) * m + cs * 0.08, pcy + (ccy - pcy) * m + cs * 0.1, cs * 0.62, Math.sin(T * 12) * 0.12);
+          if (hit) { burst(c, ccx, ccy, cs * 0.5, (k - 0.5) / 0.4, TH.ok); c.globalAlpha = cl01(1 - (k - 0.5) / 0.5); txt(c, '\u200E+1', ccx, ccy - cs * 0.35 - (k - 0.5) * cs * 0.6, cs * 0.3, TH.ok, true, 'center', true); c.globalAlpha = 1; }
+          break;
+        }
+        case 'dodge': {
+          const gy = y + s * 0.38, cyc = 1.5, ci = Math.floor(T / cyc), k = (T % cyc) / cyc, side = ci % 2 ? 1 : -1, colX = x + side * s * 0.22, m = ease((k - 0.15) / 0.35), mx = colX - side * s * 0.44 * m;
+          c.strokeStyle = 'rgba(244,241,255,0.35)'; c.lineWidth = lw; c.beginPath(); c.moveTo(x - s * 0.45, gy); c.lineTo(x + s * 0.45, gy); c.stroke();
+          const my2 = y - s * 0.5 + cl01(k / 0.85) * (gy - s * 0.06 - (y - s * 0.5));
+          if (k < 0.85) { c.save(); c.globalAlpha = 0.35; c.strokeStyle = '#ffc145'; c.lineWidth = s * 0.05; c.lineCap = 'round'; c.beginPath(); c.moveTo(colX, my2 - s * 0.2); c.lineTo(colX, my2); c.stroke(); c.restore(); disc(c, colX, my2, s * 0.075, '#ff8a3d'); disc(c, colX - s * 0.02, my2 - s * 0.02, s * 0.03, '#ffd0a8'); }
+          else burst(c, colX, gy - s * 0.04, s * 0.14, (k - 0.85) / 0.15, '#ff8a3d');
+          masc(c, 0, mx, gy - s * 0.13, s * 0.25, m < 1 ? 'wow' : 'happy', -side * 0.5, -0.8);
+          if (k > 0.12 && k < 0.6) { c.globalAlpha = cl01(1 - Math.abs(k - 0.36) / 0.24); chev(c, mx - side * s * 0.12, gy - s * 0.13, s * 0.05, -side * 1.5708, TH.warn); chev(c, mx - side * s * 0.19, gy - s * 0.13, s * 0.05, -side * 1.5708, TH.warn); c.globalAlpha = 1; }
+          break;
+        }
+        case 'pop': {
+          for (let j = 0; j < 5; j++) { const bx = x + BX[j] * s, by = y + s * 0.5 - ((T * 0.12 + j * 0.21) % 1) * s, r = s * (0.05 + 0.015 * (j % 3)); disc(c, bx, by, r, PCOL[j % 4], 0.22); ring(c, bx, by, r, '#ffffff', lw * 0.6, 0.5); }
+          const cyc = 1.3, k = (T % cyc) / cyc, tx = x + s * 0.1, ty = y - s * 0.1, r = s * 0.14, col = PCOL[Math.floor(T / cyc) % 4];
+          if (k < 0.5 || k > 0.8) { const g = k > 0.8 ? ease((k - 0.8) / 0.2) : 1; disc(c, tx, ty, r * g, col, 0.35); ring(c, tx, ty, r * g, '#ffffff', lw, 0.8); disc(c, tx - r * 0.4 * g, ty - r * 0.4 * g, r * 0.18 * g, '#ffffff', 0.7); }
+          else burst(c, tx, ty, r * 1.2, (k - 0.5) / 0.3, col);
+          const m = ease((k - 0.08) / 0.4); emo(c, '👋', x + s * 0.4 + (tx - x - s * 0.4) * m, y + s * 0.36 + (ty - y - s * 0.36) * m + s * 0.04, s * 0.2, Math.sin(T * 10) * 0.3);
+          masc(c, 0, x - s * 0.3, y + s * 0.3, s * 0.24, k > 0.5 && k < 0.85 ? 'cheer' : 'happy', 0.8, -0.8); break;
+        }
+        case 'push-up': {
+          const p = Math.abs(Math.sin(T * 3.2)), bx = x + Math.sin(T * 1.3) * s * 0.06, by = y - s * 0.16 - p * s * 0.08, r = s * 0.17;
+          c.strokeStyle = 'rgba(244,241,255,0.6)'; c.lineWidth = lw * 0.6; c.beginPath(); c.moveTo(bx, by + r); c.quadraticCurveTo(bx + s * 0.04, by + r + s * 0.06, bx, by + r + s * 0.12); c.stroke();
+          c.fillStyle = TH.accent; c.beginPath(); c.ellipse(bx, by, r * 0.92, r, 0, 0, TAU); c.fill(); c.globalAlpha = 0.45; c.fillStyle = '#ffffff'; c.beginPath(); c.ellipse(bx - r * 0.38, by - r * 0.4, r * 0.13, r * 0.24, -0.5, 0, TAU); c.fill(); c.globalAlpha = 1;
+          emo(c, '🙌', bx, by + r + s * 0.22 - p * s * 0.05, s * 0.22);
+          for (let j = 0; j < 2; j++) { const q = (T * 1.6 + j * 0.5) % 1; c.globalAlpha = cl01(1 - q); chev(c, x + (j ? 1 : -1) * s * 0.3, y + s * 0.1 - q * s * 0.2, s * 0.05, 0, TH.ok); } c.globalAlpha = 1;
+          masc(c, 1, x - s * 0.34, y + s * 0.34, s * 0.2, 'cheer', 0.5, -1); masc(c, 3, x + s * 0.34, y + s * 0.34, s * 0.2, 'happy', -0.5, -1); break;
+        }
+        case 'joystick': {
+          const tw = s * 0.86, th = s * 0.46, ty = y - s * 0.2, vx = Math.cos(T * 1.8), vy = Math.sin(T * 3.6) * 0.6;
+          device(c, x, ty, tw, th); c.fillStyle = 'rgba(244,241,255,0.4)'; c.fillRect(x - s * 0.08, ty + th / 2, s * 0.16, s * 0.025);
+          star(c, x + tw * 0.32, ty - th * 0.2, th * 0.1, TH.warn); star(c, x - tw * 0.3, ty + th * 0.18, th * 0.08, TH.warn);
+          masc(c, 1, x + vx * tw * 0.3, ty + vy * th * 0.32 + th * 0.04, th * 0.38, 'happy', vx, vy);
+          const pw = s * 0.6, pph = s * 0.27, py = y + s * 0.3, sx = x - pw * 0.24, sr = pph * 0.3; device(c, x, py, pw, pph);
+          ring(c, sx, py, sr, 'rgba(244,241,255,0.5)', lw * 0.7); const kx = sx + vx * sr * 0.55, ky = py + vy * sr * 0.55; disc(c, kx, ky, sr * 0.5, PCOL[1]);
+          disc(c, x + pw * 0.24, py, pph * 0.2, PCOL[1], 0.9); emo(c, '👆', kx + sr * 0.15, ky + sr * 0.75, sr * 1.1);
+          c.save(); DASH[0] = DASH[1] = s * 0.018; c.setLineDash(DASH); c.strokeStyle = 'rgba(244,241,255,0.3)'; c.lineWidth = lw * 0.6; c.beginPath(); c.moveTo(x, py - pph * 0.55); c.lineTo(x, ty + th * 0.6); c.stroke(); c.restore(); break;
+        }
+        case 'tap-beat': {
+          const B = 0.7, bk = (T % B) / B, down = bk < 0.16, ry = y - s * 0.16, off = Math.sin(T * 0.9) * s * 0.08;
+          c.strokeStyle = '#d8b98a'; c.lineWidth = s * 0.025; c.lineCap = 'round'; c.beginPath(); c.moveTo(x - s * 0.36, ry); c.lineTo(x + s * 0.36, ry); c.stroke();
+          c.fillStyle = TH.bad; c.fillRect(x + off - s * 0.012, ry - s * 0.05, s * 0.024, s * 0.1);
+          disc(c, x - s * 0.36, ry + s * 0.02, s * 0.13, TH.teams[0].color, 0.3); disc(c, x + s * 0.36, ry + s * 0.02, s * 0.13, TH.teams[1].color, 0.3);
+          masc(c, 1, x - s * 0.36, ry, s * 0.22, 'cheer', 1, 0); masc(c, 0, x + s * 0.36, ry, s * 0.22, 'happy', -1, 0);
+          const py = y + s * 0.3, br = s * 0.1; device(c, x, py, s * 0.5, s * 0.24);
+          ring(c, x, py, br * (1 + bk * 0.9), TH.accent, lw, 1 - bk); pressBtn(c, x, py, br, PCOL[1], down, T);
+          if (bk < 0.45) { c.globalAlpha = cl01(1 - bk / 0.45); txt(c, '✓', x + s * 0.2, py - s * 0.1 - bk * s * 0.12, s * 0.1, TH.ok, true, 'center', true); c.globalAlpha = 1; }
+          break;
+        }
+        case 'react': {
+          const cyc = 1.75, k = (T % cyc) / cyc, go = k > 0.55, down = k > 0.6 && k < 0.74, ly = y - s * 0.16, r = s * 0.15;
+          if (go) disc(c, x, ly, r * 1.45, TH.ok, 0.22); disc(c, x, ly, r, go ? TH.ok : TH.bad); disc(c, x - r * 0.35, ly - r * 0.35, r * 0.22, '#ffffff', 0.35);
+          masc(c, 2, x - s * 0.34, ly + s * 0.04, s * 0.22, go ? 'cheer' : 'wow', 1, 0);
+          const py = y + s * 0.3, br = s * 0.1; device(c, x, py, s * 0.5, s * 0.24); pressBtn(c, x, py, br, PCOL[2], down, T);
+          if (k > 0.62) emo(c, '⚡', x + s * 0.3, py - s * 0.12, s * 0.13 * (1 + 0.2 * Math.sin(T * 20)));
+          break;
+        }
+        case 'simon': { // سيمون (بتاج) يقول «لوّح» ⇒ نلوّح ✓؛ غيره يقولها ⇒ نبقى ساكنين ✓
+          const cyc = 1.75, k = (T % cyc) / cyc, says = Math.floor(T / cyc) % 2 === 0, sx = x - s * 0.24, sy = y - s * 0.2, px = x + s * 0.22, py = y + s * 0.24;
+          masc(c, says ? 2 : 0, sx, sy, s * 0.26, 'happy', 1, 0.3);
+          if (says) { c.fillStyle = TH.warn; c.beginPath(); const cw = s * 0.15, cy0 = sy - s * 0.14; c.moveTo(sx - cw / 2, cy0); c.lineTo(sx - cw / 2, cy0 - s * 0.07); c.lineTo(sx - cw / 4, cy0 - s * 0.035); c.lineTo(sx, cy0 - s * 0.085); c.lineTo(sx + cw / 4, cy0 - s * 0.035); c.lineTo(sx + cw / 2, cy0 - s * 0.07); c.lineTo(sx + cw / 2, cy0); c.closePath(); c.fill(); }
+          const bx = sx + s * 0.27, by = sy - s * 0.17, bw = s * 0.26, bh = s * 0.17; rr(c, bx - bw / 2, by - bh / 2, bw, bh, bh * 0.4); c.fillStyle = TH.fg; c.fill();
+          c.beginPath(); c.moveTo(bx - bw * 0.3, by + bh * 0.4); c.lineTo(bx - bw * 0.46, by + bh * 0.85); c.lineTo(bx - bw * 0.05, by + bh * 0.45); c.fill(); emo(c, '👋', bx, by, bh * 0.7);
+          const go = k > 0.3, wv = says && go, a = wv ? Math.sin(T * 10) * 0.5 : 0;
+          masc(c, 1, px, py, s * 0.3, wv ? 'cheer' : (go ? 'wow' : 'happy'), -0.6, -0.4, !says && go);
+          if (wv) { emo(c, '👋', px - s * 0.22, py - s * 0.08, s * 0.15, -a, false); emo(c, '👋', px + s * 0.22, py - s * 0.08, s * 0.15, a, true); swish(c, px + s * 0.22, py - s * 0.1, s * 0.11, -1.24, Math.abs(Math.sin(T * 10)), lw); }
+          if (k > 0.55) { const f = ease((k - 0.55) / 0.15); disc(c, px + s * 0.25, py - s * 0.25, s * 0.07 * f, TH.ok); c.strokeStyle = '#0f0d1a'; c.lineWidth = lw * 1.1; c.lineCap = 'round'; c.lineJoin = 'round'; c.beginPath(); c.moveTo(px + s * 0.215, py - s * 0.25); c.lineTo(px + s * 0.24, py - s * 0.225); c.lineTo(px + s * 0.285, py - s * 0.275); c.stroke(); }
+          break;
+        }
+        case 'voice': {
+          masc(c, 1, x - s * 0.14, y + s * 0.06, s * 0.42, 'wow', 1, 0); emo(c, '🎤', x - s * 0.14 + s * 0.17, y + s * 0.2, s * 0.16, -0.4);
+          c.save(); c.strokeStyle = TH.accent; c.lineWidth = lw * 1.2; c.lineCap = 'round';
+          for (let j = 0; j < 3; j++) { const q = (T * 1.3 + j / 3) % 1; c.globalAlpha = cl01(1 - q); c.beginPath(); c.arc(x + s * 0.08, y + s * 0.02, s * (0.1 + q * 0.32), -0.6, 0.6); c.stroke(); }
+          c.restore(); break;
+        }
+        default: { // tap: المس الشاشة
+          const k = (T % 0.42) / 0.42, down = k < 0.3; device(c, x, y + s * 0.02, s * 0.44, s * 0.74);
+          ring(c, x, y + s * 0.02, s * 0.1 * (1 + k), TH.accent, lw, 1 - k); pressBtn(c, x, y + s * 0.02, s * 0.1, TH.accent, down, T);
+          const q = (T * 1.2) % 1; c.globalAlpha = cl01(1 - q); txt(c, '\u200E+1', x + s * 0.3, y - s * 0.1 - q * s * 0.2, s * 0.1, TH.ok, true, 'center', true); c.globalAlpha = 1;
+          masc(c, 3, x - s * 0.34, y + s * 0.34, s * 0.2, 'cheer', 0.6, -0.6);
+        }
+      }
+    }
+    function howDraw(c) {
+      const u = un(), port = H > W * 1.05, T = still ? 0.9 : cdT, kin = still ? 1 : ease(cdT / 0.3);
+      let S = port ? Math.min(W * 0.86, H * 0.44) : Math.min(H * 0.54, W * 0.46), tp = clamp(Math.min(H * 0.052, W * 0.078), 20, 64), lp = clamp(tp * 0.62, 16, 34), R = clamp(u * 5.5, 18, 46);
+      const ls = lines(c, HOW.text, tp, true, Math.min(W * 0.88, 1100)), nl = Math.min(2, ls.length), gap = clamp(u * 3, 10, 34);
+      let tot = lp * 2 + gap + S + gap + nl * tp * 1.25 + gap + R * 2; const room = H - ui.safe.top - 8 - ui.safe.bottom; if (tot > room) { S = Math.max(S * 0.6, S - (tot - room)); tot = lp * 2 + gap + S + gap + nl * tp * 1.25 + gap + R * 2; }
+      const y0 = Math.max(ui.safe.top + 8, (H - tot) / 2), cx = W / 2;
+      c.save(); c.direction = 'rtl'; c.globalAlpha = 0.95; c.fillStyle = TH.bg; c.fillRect(0, 0, W, H); c.globalAlpha = 1;
+      const ly = y0 + lp, lt = 'كيف نلعب؟'; c.font = F(lp, true); const lwid = c.measureText(lt).width + lp * 2.2; pill(c, cx, ly, lwid, lp * 2, TH.accent); txt(c, lt, cx, ly, lp, TH.onAccent, true);
+      const sy = y0 + lp * 2 + gap + S / 2, k = 0.86 + 0.14 * kin;
+      c.save(); c.globalAlpha = kin; c.translate(cx, sy); c.scale(k, k);
+      c.save(); c.rotate(-0.05 + (still ? 0 : 0.012 * Math.sin(T * 2))); c.globalAlpha = 0.32 * kin; rr(c, -S / 2, -S / 2, S, S, S * 0.09); c.fillStyle = TH.accent; c.fill(); c.restore(); rr(c, -S / 2, -S / 2, S, S, S * 0.09); c.fillStyle = TH.surface; c.fill(); c.lineWidth = Math.max(2, S * 0.008); c.strokeStyle = TH.line; c.stroke();
+      c.save(); rr(c, -S / 2, -S / 2, S, S, S * 0.09); c.clip(); scene(c, HOW.act, 0, 0, S, T); c.restore();
+      if (CAM.has(HOW.act) && (caps.has('camera.motion') || caps.has('camera.view') || caps.has('camera.color') || caps.has('camera.lanes'))) { pill(c, S * 0.36, -S * 0.4, S * 0.16, S * 0.1, 'rgba(15,13,26,0.7)'); emo(c, '📷', S * 0.36, -S * 0.4, S * 0.06); }
+      c.restore();
+      let ty = sy + S / 2 + gap + tp * 0.62; c.globalAlpha = kin; for (let i = 0; i < nl; i++, ty += tp * 1.25) txt(c, ls[i], cx, ty + (1 - kin) * tp * 0.5, tp, TH.fg, true, 'center', true); c.globalAlpha = 1;
+      const ry = ty - tp * 0.62 + gap * 0.6 + R, per = cdD / cdN, f = 1 - (cdT % per) / per;
+      c.lineWidth = Math.max(4, R * 0.16); c.lineCap = 'round'; c.strokeStyle = 'rgba(255,255,255,0.14)'; c.beginPath(); c.arc(cx, ry, R, 0, TAU); c.stroke();
+      c.strokeStyle = TH.accent; c.beginPath(); c.arc(cx, ry, R, -1.5708, -1.5708 + TAU * f); c.stroke(); txt(c, anum(cdLeft), cx, ry, R * 1.05, TH.fg, true, 'center', false);
+      c.restore();
+    }
     // ----- حالة العدّ والنقاط والوميض -----
-    let cdState = 0, cdLeft = 0, cdT = 0, cdDone = null, flT = 0, flD = 0.25, flCol = TH.ok, popI = 0;
+    let cdState = 0, cdLeft = 0, cdT = 0, cdDone = null, cdHow = false, howUsed = false, cdN = 3, cdD = HOWMIN, flT = 0, flD = 0.25, flCol = TH.ok, popI = 0;
     const pTxt = new Array(POPN).fill(''), pX = new Float64Array(POPN), pY = new Float64Array(POPN), pAge = new Float64Array(POPN).fill(-1), pCol = new Array(POPN).fill(TH.fg), pLtr = new Array(POPN).fill(false);
     function step(dt) {
       if (!still) tAnim += dt;
       if (flT > 0) flT -= dt;
       for (let i = 0; i < POPN; i++) if (pAge[i] >= 0) { pAge[i] += dt; if (pAge[i] > POPT) pAge[i] = -1; }
-      if (cdState === 1) {
+      if (cdState === 1 && cdHow) { // الشرح: مدة ثابتة cdD، والرقم الصغير يعدّ n..1 بالتساوي عليها
+        cdT += dt;
+        if (cdT >= cdD) { cdState = 2; cdT = 0; cdHow = false; snd(880, 260, 0.25, 'triangle'); const cb = cdDone; cdDone = null; if (cb) cb(); }
+        else { const d = Math.max(1, Math.ceil((cdD - cdT) / (cdD / cdN) - 1e-9)); if (d !== cdLeft) { cdLeft = d; snd(520, 90, 0.2, 'triangle'); } }
+      } else if (cdState === 1) {
         cdT += dt;
         if (cdT >= STEP) { cdT -= STEP; cdLeft--; if (cdLeft <= 0) { cdState = 2; cdT = 0; snd(880, 260, 0.25, 'triangle'); const cb = cdDone; cdDone = null; if (cb) cb(); } else snd(520, 90, 0.2, 'triangle'); }
       } else if (cdState === 2) { cdT += dt; if (cdT >= GO) cdState = 0; }
@@ -282,18 +481,23 @@
         if (pl) for (let i = 0; i < pl.length && i < 4; i++) { y += ch * 0.5 + u * 0.8; ui.playerChip(c, i, W / 2, y + u * 0.8, { label: pl[i].label, score: pl[i].score, active: o.winner === i, size: ch }); y += ch * 0.5 + u * 0.8; }
         c.restore();
       },
-      countdown(n, onDone) { cdLeft = clamp(Math.round(+n) || 3, 1, 9); cdT = 0; cdState = 1; cdDone = typeof onDone === 'function' ? onDone : null; snd(520, 90, 0.2, 'triangle'); },
+      countdown(n, onDone) {
+        cdLeft = clamp(Math.round(+n) || 3, 1, 9); cdT = 0; cdState = 1; cdDone = typeof onDone === 'function' ? onDone : null; snd(520, 90, 0.2, 'triangle');
+        cdHow = !!HOW && !howUsed; // الشرح مرة واحدة في كل تشغيل للعبة (أول عدّ)؛ ما بعده أرقام عادية (أدوار/جولات تالية)
+        if (cdHow) { howUsed = true; cdN = cdLeft; cdD = Math.max(HOWMIN, cdN * STEP); if (caps.has('players.pads')) send({ t: 'pads.say', i: -1, text: HOW.text }); } // ألعاب الجوالات: الجملة نفسها على كل جوال
+      },
       pop(v, x, y, color) { // نقاط تطفو؛ v رقم (+1 / −1 بلونَي النجاح والخطأ) أو نص
         const i = popI; popI = (popI + 1) % POPN; const isN = typeof v === 'number';
         pTxt[i] = isN ? (v >= 0 ? '+' : '') + anum(v) : String(v).slice(0, 30); pLtr[i] = isN; pX[i] = x; pY[i] = y; pAge[i] = 0; pCol[i] = color || (isN && v < 0 ? TH.bad : TH.ok);
       },
       flash(color, dur) { flCol = color || TH.ok; flD = dur > 0 ? dur : 0.25; flT = flD; },
-      cancel() { cdState = 0; cdDone = null; flT = 0; for (let i = 0; i < POPN; i++) pAge[i] = -1; },
+      cancel() { cdState = 0; cdDone = null; cdHow = false; flT = 0; for (let i = 0; i < POPN; i++) pAge[i] = -1; },
       draw(c) { // مرة واحدة في آخر render: وميض + عدّ تنازلي + نقاط طافية
         if (flT > 0) { c.save(); c.globalAlpha = 0.38 * cl01(flT / flD); c.fillStyle = flCol; c.fillRect(0, 0, W, H); c.restore(); }
         if (cdState) {
           c.save(); c.direction = 'rtl'; const cx = W / 2, cy = H * 0.45;
-          if (cdState === 1) {
+          if (cdState === 1 && cdHow) howDraw(c);
+          else if (cdState === 1) {
             const R = Math.min(W, H) * 0.21, k = still ? 1 : 1 + 0.35 * Math.pow(Math.max(0, 1 - cdT / 0.22), 2);
             c.globalAlpha = 0.5; c.fillStyle = TH.bg; c.fillRect(0, 0, W, H); c.globalAlpha = 1;
             c.lineWidth = Math.max(6, R * 0.09); c.lineCap = 'round'; c.strokeStyle = 'rgba(255,255,255,0.14)'; c.beginPath(); c.arc(cx, cy, R, 0, 6.2832); c.stroke();

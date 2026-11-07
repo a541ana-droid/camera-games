@@ -1,5 +1,7 @@
 // @title صيد الألوان
 // @desc أمسك أمام الكاميرا شيئًا بلون المطلوب (بلا إظهار وجهك — الصورة لا تُعرض) وثبّته قليلًا. 20 ثانية لكل لون.
+// @howto أرِ الكاميرا شيئًا بنفس اللون
+// @howto-act show-color
 // @accent #ffc145
 // @engine 0.2
 // @capabilities camera.color audio haptic hud

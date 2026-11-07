@@ -1,5 +1,7 @@
 // @title البالون الطائر
 // @desc تعاون عائلي: بالون كبير يهبط ببطء، وحركتكم أمام الكاميرا تدفعه للأعلى. أبقوه في الهواء أطول وقت ممكن! لا يلزم أن يظهر وجهك.
+// @howto تحرّكوا لتدفعوا البالون للأعلى
+// @howto-act push-up
 // @accent #ff6b8b
 // @engine 0.2
 // @capabilities camera.motion audio haptic hud players.local

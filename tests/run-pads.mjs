@@ -106,6 +106,12 @@ try {
   await until(() => pads[0].ev(`!!document.querySelector('.pstart')&&!document.querySelector('.pstart').disabled`), 4000);
   await tapEl(pads[0], '.pstart');
   ok('leader starts the selected game from the phone', !!(await until(() => c.ev(`(()=>{const s=__engine.state(); return !!s&&s.ready&&s.frames>10&&Pads.state().phase==='playing'})()`), 10000)), await host().then(s => s.game));
+  { // الشرح القصير (0.5.1): يظهر على التلفاز (لا أرقام فقط) وتصل جملة @howto نفسها إلى كل جوال
+    const g = await c.ev(`Pads.state().game`), src = readFileSync(new URL('../' + (g && g.src || g || 'games/pad-stars.js'), import.meta.url), 'utf8'), how = (/^\/\/ @howto (.+)$/m.exec(src) || [])[1] || '';
+    await sleep(600); for (const i of [0, 1, 2]) await tapEl(pads[i], '#padBtnA'); // كلٌّ يضغط «جاهز» فتبدأ اللعبة عدّها ⇒ الشرح
+    const seen = await until(() => pads[1].ev(`document.getElementById('padSay').textContent.includes(${JSON.stringify(how.trim())})`), 5000);
+    ok('howto text of the started pad game reached the phones', how && !!seen, { game: g, how }); await shot(pads[1], 'phone-howto');
+    await sleep(1200); await shot(c, 'tv-howto'); } // لقطة التلفاز منتصف الشرح (رسمه وحدوده يختبرها run-kit)
   const sr2 = await rect(pads[1], '#padStick'); if (sr2) { await mouse(pads[1], 'mousePressed', sr2[0], sr2[1]); await mouse(pads[1], 'mouseMoved', sr2[0], sr2[1] - 80); }
   await sleep(4500); await shot(c, 'tv-game-leader-start'); if (sr2) await mouse(pads[1], 'mouseReleased', sr2[0], sr2[1] - 80);
   await c.ev(`document.getElementById('exit').click()`);

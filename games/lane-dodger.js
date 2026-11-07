@@ -1,5 +1,7 @@
 // @title تفادى!
 // @desc لكل لاعب حارته: نيازك تسقط عليك، فتحرّك جسمك أو يدك يمينًا ويسارًا أمام الكاميرا لتتفاداها. لكل لاعب 3 أرواح، ومن يصمد أطول يفوز. ثبّت الجهاز على حامل وقف على بعد مترين أو ثلاثة.
+// @howto تحرّك يمينًا ويسارًا لتتفادى
+// @howto-act dodge
 // @accent #ff8a3d
 // @engine 0.2
 // @capabilities camera.lanes camera.motion audio haptic hud players.local

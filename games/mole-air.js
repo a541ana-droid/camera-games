@@ -1,5 +1,7 @@
 // @title مطرقة الهواء
 // @desc تظهر أهداف في شبكة 3×3. اضربها بيدك في الهواء أمام الكاميرا (حركة في الخلية). 30 ثانية.
+// @howto اضرب الشخصية بيدك في الهواء
+// @howto-act hand-zone
 // @accent #ff6b8b
 // @engine 0.2
 // @capabilities camera.view camera.motion audio haptic hud

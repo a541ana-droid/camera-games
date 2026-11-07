@@ -1,5 +1,7 @@
 // @title متاهة الميلان
 // @desc أمِل الجوال لتدحرج الكرة عبر المتاهة إلى الهدف الأخضر، واجمع النجوم وتجنّب الثقوب. ثلاث مراحل قصيرة في 60 ثانية، ومن 1 إلى 4 لاعبين يتناوبون على الجوال.
+// @howto أمِل الجوال لتصل الكرة للهدف
+// @howto-act tilt
 // @accent #ff5cc8
 // @engine 0.2
 // @capabilities motion.device audio haptic hud players.local

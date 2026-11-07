@@ -1,5 +1,7 @@
 // @title تجمّد!
 // @desc تحرّك مع اللحن، وحين يتوقف تجمّد تمامًا. من يتحرك أثناء التجمّد يخسر نقطة. لاعبان بالتناوب. ثبّت الجهاز على حامل.
+// @howto ارقص مع اللحن، وتجمّد حين يقف!
+// @howto-act freeze
 // @accent #4da3ff
 // @engine 0.2
 // @capabilities camera.motion audio haptic hud players.local

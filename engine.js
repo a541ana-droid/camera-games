@@ -1,7 +1,7 @@
 'use strict';
 // المضيف: يملك الكاميرا والصوت والحلقة والحارس والرسم. كود اللعبة يعمل في Web Worker قابل للإنهاء (terminate) ولا يعمل أي سطر منه في هذا الخيط. لا ثقة بشيء قادم منه.
 (() => {
-  const VERSION = '0.5.0', MAJOR = 0, BUDGET_MS = 8, HB_TIMEOUT = 2000, BOOT_TIMEOUT = 4000, ALIVE_TIMEOUT = 2500, MAX_GAME_BYTES = 200000;
+  const VERSION = '0.5.1', MAJOR = 0, BUDGET_MS = 8, HB_TIMEOUT = 2000, BOOT_TIMEOUT = 4000, ALIVE_TIMEOUT = 2500, MAX_GAME_BYTES = 200000;
   const KNOWN = ['camera.view', 'camera.color', 'camera.motion', 'camera.lowres', 'camera.calibrate', 'audio', 'haptic', 'hud', 'players.local', 'camera.lanes', 'camera.playercolors', 'audio.mic', 'motion.device', 'players.pads'];
   const PLANNED = ['qr', 'players.network', 'hand', 'pose'];
   const MAX_MSG_PER_S = 400, MAX_BYTES = new URLSearchParams(location.search).get('debug') === '1' ? 8192 : 2048, MAX_TRACKS = 4, MEM_LIMIT = 192e6;
@@ -35,9 +35,9 @@
   };
 
   function parseHeader(text) {
-    const h = { title: '', desc: '', engine: '', caps: [], assets: '', series: '', accent: '', pads: '' };
+    const h = { title: '', desc: '', engine: '', caps: [], assets: '', series: '', accent: '', pads: '', howto: '', 'howto-act': '' };
     for (const line of text.split('\n', 40)) {
-      const m = /^\/\/\s*@(\w+)\s*(.*)$/.exec(line.trim()); if (!m) continue;
+      const m = /^\/\/\s*@([\w-]+)\s*(.*)$/.exec(line.trim()); if (!m) continue;
       if (m[1] === 'capabilities') h.caps = m[2].split(/\s+/).filter(Boolean); else if (m[1] in h) h[m[1]] = m[2].trim();
     }
     return h;
@@ -94,6 +94,10 @@
   const PREF_KEY = 'engine-camview';
   const camPref = () => { try { return localStorage.getItem(PREF_KEY) !== '0'; } catch (e) { return true; } };
   const setCamPref = on => { try { localStorage.setItem(PREF_KEY, on ? '1' : '0'); } catch (e) { /* */ } };
+  // «شرح قصير قبل كل لعبة» (0.5.1، ENGINE.md §3.3): تفضيل للمستخدم، افتراضيه تشغيل. اللعبة لا تراه؛ المحرك وحده يقرّر هل يمرّر @howto إلى الـWorker.
+  const HOW_KEY = 'engine-howto';
+  const howPref = () => { try { return localStorage.getItem(HOW_KEY) !== '0'; } catch (e) { return true; } };
+  const setHowPref = on => { try { localStorage.setItem(HOW_KEY, on ? '1' : '0'); } catch (e) { /* */ } };
   let camShown = false;
   function showCam(on) { camShown = !!on && camPref(); cam.classList.toggle('off', !camShown); indicator(); }
   function indicator() {
@@ -350,7 +354,7 @@
       if (S.caps.has('audio')) audioCtx();
       const rt = await loadRuntime(); await loadLauncher(); if (!S || S.id !== id) return;
       S.assetInfo = await loadAssets(head, src); if (!S || S.id !== id) return;
-      const spec = { accent: head.accent ? accentOf(head).c : '', memmax: MEM_LIMIT, players: SER() ? Series.names() : null, teams: teamSpec(head), pads: head.caps.includes('players.pads') && window.Pads ? Pads.snapshot() : null, endmax: ENDMAX, nogate: DEBUG && qs.get('nogate') === '1', version: VERSION, maxe: Draw.MAXE, cmds: Draw.spec(), defaults: Draw.DEFAULTS, mt: Draw.measureTables() };
+      const spec = { accent: head.accent ? accentOf(head).c : '', howto: howPref() && head.howto ? { text: head.howto.slice(0, 60), act: String(head['howto-act'] || '').slice(0, 20) } : null, memmax: MEM_LIMIT, players: SER() ? Series.names() : null, teams: teamSpec(head), pads: head.caps.includes('players.pads') && window.Pads ? Pads.snapshot() : null, endmax: ENDMAX, nogate: DEBUG && qs.get('nogate') === '1', version: VERSION, maxe: Draw.MAXE, cmds: Draw.spec(), defaults: Draw.DEFAULTS, mt: Draw.measureTables() };
       S.wsrc = 'self.__SPEC=' + JSON.stringify(spec) + ';\n' + rt; S.gsrc = ';(function(){\n' + text + '\n})();';
       showCam(false); $('ov').hidden = true;
       S.sw = stage.clientWidth; S.sh = stage.clientHeight; Draw.resize(S.sw, S.sh, window.devicePixelRatio);
@@ -406,6 +410,7 @@
     $('ver').textContent = 'المحرك ' + VERSION; $('facing').onchange = e => { facing = e.target.value; };
     if (DEBUG) $('synthL').hidden = false;
     $('camview').checked = camPref(); $('camview').onchange = e => { setCamPref(e.target.checked); if (!e.target.checked) showCam(false); };
+    $('howto').checked = howPref(); $('howto').onchange = e => setHowPref(e.target.checked);
     const list = $('list'); list.textContent = '';
     if (crashed) { const w = document.createElement('p'); w.className = 'warn'; w.textContent = 'أُعيد تحميل الصفحة أثناء لعبة «' + crashed.t + '» — غالبًا استهلكت ذاكرة الجهاز. لم تُشغَّل تلقائيًا؛ اخترها من جديد إن أردت.'; list.before(w); diag('crash-recovered', crashed.t); }
     try {

@@ -39,6 +39,30 @@ try {
   ok('countdown(2) drawn ≈2s (2 steps of 0.7s + 0.6s «انطلق»)', between(dur[2], 1.8, 2.25), dur[2]);
   ok('cancel(): a pop cancelled after 0.2s disappears at once (not 0.95s)', between(dur[3], 0.05, 0.4), dur[3]);
   ok('countdown onDone fired exactly once', tl[tl.length - 1][2] === '1', tl[tl.length - 1]);
+  // (3b) الشرح القصير قبل اللعب (0.5.1): أول عدّ في لعبة لها @howto يصير مشهدًا ≈3.5ث، والثاني أرقامًا عادية؛ onDone مرة واحدة لكلٍّ؛ الإعداد مطفأ ⇒ الأرقام القديمة
+  const howRun = async () => {
+    await open('tests/games/howto-probe.js', 0); const cm = [];
+    for (let i = 0; i < 70; i++) { await sleep(100); const s = await c.ev(`(()=>{const s=__engine.state(); return s&&s.ready?s.cmdN:-1})()`); if (s >= 0) cm.push(s); if (cm.length === 12) break; }
+    let end = null; for (let i = 0; i < 60 && !end; i++) { await sleep(200); end = await c.ev(`(__engine.events.find(e=>e.n==='end')||{}).d||null`); }
+    const errs = await c.ev(`(()=>{const s=__engine.state(); return {viol:s?s.viol:0, draw:Draw.stats().errs, ev:__engine.events.filter(e=>/violation|error|cmd-overflow/.test(e.n)).map(e=>e.n)}})()`);
+    return { r: end ? JSON.parse(end.text) : null, peak: Math.max(0, ...cm), errs };
+  };
+  const hw = await howRun();
+  ok('howto: first countdown plays the explainer (≈3.5s) and onDone fires once at «انطلق!»', hw.r && hw.r.n1 === 1 && hw.r.d1 > 3.3 && hw.r.d1 < 3.9 && hw.r.mid === true, hw.r);
+  ok('howto: the next countdown in the same run is the plain 3-2-1 (≈2.1s), onDone once', hw.r && hw.r.n2 === 1 && hw.r.d2 > 1.9 && hw.r.d2 < 2.5, hw.r);
+  ok('howto: explainer is actually drawn (mascots + card: ≥150 commands/frame) with no violations, draw errors or overflow, within 3000', hw.peak >= 150 && hw.peak < 3000 && hw.errs.viol === 0 && hw.errs.draw === 0 && !hw.errs.ev.length, { peak: hw.peak, ...hw.errs });
+  ok('settings panel has «شرح قصير قبل كل لعبة», on by default', await c.ev(`(()=>{const e=document.getElementById('howto'); return !!e && e.checked && /شرح قصير قبل كل لعبة/.test(e.parentElement.textContent)})()`));
+  await c.ev(`(()=>{const e=document.getElementById('howto'); e.checked=false; e.dispatchEvent(new Event('change'))})()`);
+  const hw0 = await howRun();
+  ok('howto setting off ⇒ plain countdown (≈2.1s), onDone once, few commands', hw0.r && hw0.r.n1 === 1 && hw0.r.d1 > 1.9 && hw0.r.d1 < 2.5 && hw0.r.mid === false && hw0.peak < 120, { r: hw0.r, peak: hw0.peak });
+  ok('howto setting persisted like the other settings (localStorage engine-howto)', await c.ev(`localStorage.getItem('engine-howto')`) === '0');
+  await c.ev(`(()=>{const e=document.getElementById('howto'); e.checked=true; e.dispatchEvent(new Event('change'))})()`);
+  const RTA = JSON.parse(/const ACTS = (\[[^\]]*\])/.exec(readFileSync(new URL('../runtime.js', import.meta.url), 'utf8'))[1].replace(/'/g, '"')), CHA = JSON.parse(/const HOWACTS = (\[[^\]]*\])/.exec(readFileSync(new URL('../tools/check-game.mjs', import.meta.url), 'utf8'))[1].replace(/'/g, '"'));
+  const MD = readFileSync(new URL('../ENGINE.md', import.meta.url), 'utf8');
+  ok('@howto-act: runtime ACTS = check-game HOWACTS = ENGINE.md table (no drift)', JSON.stringify([...RTA].sort()) === JSON.stringify([...CHA].sort()) && RTA.every(a => MD.includes('| `' + a + '` |')), { RTA, CHA });
+  const idx = readFileSync(new URL('../games/index.txt', import.meta.url), 'utf8').split('\n').map(x => x.trim()).filter(x => x.endsWith('.js') && !x.startsWith('zz-'));
+  const noHow = idx.filter(g => { const t = readFileSync(new URL('../games/' + g, import.meta.url), 'utf8'), h = /^\/\/ @howto (.+)$/m.exec(t), a = /^\/\/ @howto-act (\S+)$/m.exec(t); return !h || [...h[1].trim()].length > 40 || !a || !RTA.includes(a[1]) || !/countdown\s*\(/.test(t); });
+  ok('every listed game has @howto (≤40 chars) + a known @howto-act and uses ui.countdown', idx.length >= 14 && !noHow.length, { games: idx.length, noHow });
   // (4) تطابق التشغيلين بكسلًا ببكسل في كل مشهد من العرض الساكن
   const grab = async () => { const out = []; await open('tests/games/kit-demo.js', 1500); for (let k = 0; k < 3; k++) { await sleep(350); out.push(await c.ev(`document.getElementById('cv').toDataURL('image/png')`)); await tap(215, 400); } return out; };
   const A = await grab(), B = await grab();

@@ -1,5 +1,7 @@
 // @title سيمون يقول
 // @desc من 1 إلى 4 لاعبين. تظهر تعليمة حركة لمنطقة من الشاشة: إن بدأت بـ«سيمون يقول» فتحرّك فيها، وإن لم تبدأ بها فلا تتحرك أبدًا! بلا صوت عالٍ.
+// @howto تحرّك فقط إذا قال سيمون!
+// @howto-act simon
 // @accent #ffb020
 // @engine 0.2
 // @capabilities camera.motion camera.lanes audio haptic hud players.local

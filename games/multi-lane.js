@@ -1,5 +1,7 @@
 // @title سباق الحارات
 // @desc من 2 إلى 4 لاعبين: تُقسَّم الشاشة إلى حارات بعدد اللاعبين. كل لاعب في حارته يلوّح بيده (حركة) أو يهزّ شيئًا بلونه (لون) ليدفع متسابقه إلى الخط. ثبّت الجهاز على حامل.
+// @howto لوّح بيدك ليجري متسابقك
+// @howto-act wave-lane
 // @accent #3ddc97
 // @engine 0.2
 // @capabilities camera.view camera.lanes camera.playercolors audio haptic hud players.local

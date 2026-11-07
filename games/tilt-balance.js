@@ -1,5 +1,7 @@
 // @title كرة الميزان
 // @desc أمِل الجوال لتدحرج الكرة وتجمع النجوم الخمس قبل انتهاء الوقت. هزّ الجوال لإعادة الكرة إلى الوسط.
+// @howto أمِل الجوال لتجمع النجوم
+// @howto-act tilt
 // @accent #7c6cff
 // @engine 0.2
 // @capabilities motion.device audio haptic hud
@@ -22,7 +24,7 @@ defineGame({
     api.hud.set({ score: 'نجوم 0/' + STARS.length, time: String(TOTAL) });
   },
   onTap() {
-    if (state === 'intro') { state = 'play'; got = 0; left = TOTAL; reset(); api.audio.beep(660, 80); } // بلا عدّ تنازلي: الكرة ساكنة في الوسط حتى تميل الجوال
+    if (state === 'intro') { state = 'count'; got = 0; left = TOTAL; reset(); ui.countdown(3, () => { state = 'play'; reset(); }); } // الكرة ساكنة في الوسط أثناء العدّ (أو الشرح القصير) حتى يبدأ اللعب
   },
   update(dt) {
     const s = api.view.size(); W = s.w || W; H = s.h || H;

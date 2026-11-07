@@ -16,14 +16,20 @@ const CAPMAP = [[/api\.view\.showCamera/, 'camera.view'], [/api\.track\.color\b/
 // عُدّة الواجهة api.ui (runtime.js): القائمة تُطابَق في tests/run-kit.mjs بمفاتيح الكائن الفعلي فلا تتأخر عنه
 const KIT = ['theme', 'safe', 'num', 'hit', 'row', 'background', 'text', 'title', 'bigText', 'meter', 'progress', 'shape', 'playerChip', 'button', 'results', 'countdown', 'pop', 'flash', 'cancel', 'draw', 'still', 'counting', 't', 'unit', 'mascot'];
 const PLANMAP = [[/api\.qr\b/, 'qr.show'], [/api\.players\.network/, 'players.network'], [/api\.hand\b/, 'hand'], [/api\.pose\b/, 'pose']];
+const HOWACTS = ['wave', 'wave-lane', 'freeze', 'show-color', 'tilt', 'hand-zone', 'block', 'dodge', 'pop', 'push-up', 'joystick', 'tap-beat', 'react', 'tap', 'voice', 'simon']; // = ACTS في runtime.js (يتحقق run-kit من التطابق)
 let bad = 0;
 for (const file of process.argv.slice(2)) {
   const src = readFileSync(file, 'utf8'), errs = [], warns = [];
-  const head = {}; for (const l of src.split('\n', 40)) { const m = /^\/\/\s*@(\w+)\s*(.*)$/.exec(l.trim()); if (m) head[m[1]] = m[2].trim(); }
+  const head = {}; for (const l of src.split('\n', 40)) { const m = /^\/\/\s*@([\w-]+)\s*(.*)$/.exec(l.trim()); if (m) head[m[1]] = m[2].trim(); }
   const caps = (head.capabilities || '').split(/\s+/).filter(Boolean);
   if (!('capabilities' in head)) errs.push('لا يوجد سطر // @capabilities في الرأس');
   if (!head.title) warns.push('لا يوجد // @title');
   if (head.engine && head.engine.split('.')[0] !== '0') errs.push('@engine ' + head.engine + ' لا يطابق المحرك 0.x');
+  // الشرح القصير قبل اللعب (0.5.1): جملة قصيرة + فعل من المجموعة المغلقة (ENGINE.md §1)
+  if (!head.howto) warns.push('لا يوجد // @howto: أضف جملة أمر قصيرة لطفل (≤40 حرفًا) فيظهر شرح متحرّك قبل اللعب (ENGINE.md §1)');
+  else if ([...head.howto].length > 40) warns.push('@howto طويلة (' + [...head.howto].length + ' حرفًا): الأقصر أوضح للطفل (≤40)؛ تُقصّ عند 60');
+  if (head['howto-act'] && !HOWACTS.includes(head['howto-act'])) errs.push('@howto-act «' + head['howto-act'] + '» ليس من الأفعال المعروفة: ' + HOWACTS.join(' '));
+  if (head.howto && !/\bcountdown\s*\(/.test(src)) warns.push('@howto لا يظهر إلا عند ui.countdown: ابدأ الجولة الأولى بها');
   for (const c of caps) { if (PLANNED.includes(c)) errs.push('القدرة «' + c + '» غير متاحة بعد'); else if (!KNOWN.includes(c)) errs.push('قدرة غير معروفة: ' + c); }
   const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/([^:])\/\/.*$/gm, '$1');
   if (!/\bdefineGame\s*\(/.test(code)) errs.push('لا يوجد استدعاء defineGame({...})');

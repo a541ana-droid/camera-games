@@ -1,5 +1,7 @@
 // @title فقاعات
 // @desc فقاعات ملوّنة تطفو أمامك وصورتك خلفها كالمرآة. لوّح بيدك أو حرّك جسمك عند الفقاعة لتنفجر! لعبة هادئة لكل العائلة: كلنا معًا بنقاط مشتركة، أو لكل لاعب لونه وحارته. ثبّت الجهاز على حامل.
+// @howto فجّر الفقاعات بيدك
+// @howto-act pop
 // @accent #4dc3ff
 // @engine 0.2
 // @capabilities camera.view camera.motion audio haptic hud players.local

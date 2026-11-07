@@ -1,5 +1,7 @@
 // @title حارس المرمى
 // @desc كرات تنطلق نحو مربعات المرمى، حرّك يدك أو جسمك في المربع قبل أن تصل لتصدّها! لاعب واحد على الشاشة كلها، أو من 2 إلى 4 لاعبين لكل منهم مرماه (حارته).
+// @howto صُدّ الكرة بيدك قبل أن تدخل
+// @howto-act block
 // @accent #3ddc97
 // @engine 0.2
 // @capabilities camera.motion camera.lanes audio haptic hud players.local
