@@ -9,7 +9,9 @@
 // @series no
 // لعبة فرق: api.teams.of(index) يحدّد فريق كل جوال، وapi.end({teamScores}) يبلغ الشاشة بالفائز. لا صراخ ولا كاميرا: إيقاع فقط.
 
-const BEAT = 0.6, PERFECT = 0.11, GOOD = 0.21, ROUND = 45, WIN = 1;
+// إعدادات الأسرة (ENGINE.md §3.5): RS يضرب مدة الجولة، DIFF 0 سهل / 1 عادي (سلوك ما قبلها حرفيًا) / 2 صعب. by3(سهل، عادي، صعب).
+let RS = 1, DIFF = 1; const by3 = (e, m, h) => DIFF === 0 ? e : DIFF === 2 ? h : m;
+let BEAT = 0.6, PERFECT = 0.11, GOOD = 0.21, ROUND = 45; const WIN = 1;
 let api, ui, state = 'ready', t = 0, bt = 0, beatN = 0, rope = 0, ropeV = 0, W = 800, H = 600, readyT = 0, ended = false, flashT = [0, 0];
 const pl = []; // {ready, last, hits, perfect, mood, moodT, lean}
 const marks = []; for (let i = 0; i < 24; i++) marks.push({ x: 0, y: 0, k: 0, a: -1, c: '' }); let mi = 0;
@@ -33,9 +35,13 @@ function finish() {
   api.end({ score: Math.max(ts[0], ts[1]), scores, teamScores: ts, text: winner < 0 ? 'تعادل! الحبل في المنتصف' : 'فاز ' + api.teams.names[winner] + ' بالشدّ في الإيقاع' });
 }
 
+function tok(c, i, x, y, sz, mood) { // اللاعب = لونه وشكله فقط (DESIGN.md §2)، بلا وجه: cheer نبضة خفيفة، wow حلقة بيضاء
+  const r = sz * 0.4 * (mood === 'cheer' && !ui.still ? 1 + 0.08 * Math.sin(ui.t * 10) : 1); ui.shape(c, i, x, y, r);
+  if (mood === 'wow') { c.save(); c.strokeStyle = 'rgba(255,255,255,0.8)'; c.lineWidth = Math.max(2, r * 0.12); c.beginPath(); c.arc(x, y, r * 1.4, 0, 6.283); c.stroke(); c.restore(); }
+}
 defineGame({
   init(a) {
-    api = a; ui = a.ui; const s = api.view.size(); W = s.w; H = s.h;
+    api = a; ui = a.ui; RS = (a.prefs && a.prefs.roundScale) || 1; DIFF = a.prefs ? a.prefs.difficulty : 1; ROUND = Math.round(45 * RS); BEAT = by3(0.75, 0.6, 0.55); PERFECT = by3(0.2, 0.11, 0.08); GOOD = by3(0.375, 0.21, 0.15); const s = api.view.size(); W = s.w; H = s.h; // سهل: نبضة أبطأ وكل ضغطة قريبة تُحسب
     api.pads.controls({ stick: false, a: 'جاهز' }); api.pads.say(-1, 'اضغط «جاهز»');
     api.pads.onJoin(p => api.pads.controls({ stick: false, a: state === 'play' ? 'شُدّ!' : 'جاهز' }, p.index));
     api.hud.set({ title: 'شدّ الحبل' });
@@ -101,7 +107,7 @@ defineGame({
     const ms = Math.max(56, Math.min(h * 0.15, w * 0.09));
     for (let tm = 0; tm < 2; tm++) side[tm].forEach((p, j) => {
       const r = q(p.index), dir = tm ? -1 : 1, x = kx + dir * (ms * 1.1 + j * ms * 0.95), y = ry + ms * 0.08 - (j % 2) * 6; headAt[p.index] = [x, y - ms * 1.0];
-      c.globalAlpha = p.connected ? 1 : 0.35; c.save(); c.translate(x, y); c.rotate(dir * (0.12 + (r.moodT > 0 ? 0.1 : 0))); ui.mascot(c, p.character, 0, -ms * 0.3, ms, { mood: !p.connected ? 'sad' : r.moodT > 0 ? r.mood : 'happy', look: { x: dir, y: 0 } }); c.restore();
+      c.globalAlpha = p.connected ? 1 : 0.35; c.save(); c.translate(x, y); c.rotate(dir * (0.12 + (r.moodT > 0 ? 0.1 : 0))); tok(c, p.colorIndex, 0, -ms * 0.3, ms, !p.connected ? 'sad' : r.moodT > 0 ? r.mood : 'happy'); c.restore();
       ui.text(c, p.name, x, y + ms * 0.55, Math.max(14, ms * 0.2), th.fg, true); if (state === 'ready') ui.text(c, r.ready ? '✓' : '…', x, y - ms * 0.95, 22, r.ready ? th.ok : th.mut, true); c.globalAlpha = 1; });
     for (const m of marks) if (m.a >= 0) { const at = headAt[m.i] || [m.x, m.y]; c.globalAlpha = 1 - m.a / 0.8; ui.text(c, m.k === 2 ? 'ممتاز!' : m.k === 1 ? 'جيد' : 'ليس الآن', at[0], at[1] - m.a * 50, Math.max(20, Math.min(30, w * 0.016)), m.c, true); } c.globalAlpha = 1;
     if (state === 'play') ui.progress(c, Math.max(0, 1 - t / ROUND), { y: h - 64, h: 8 });

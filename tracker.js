@@ -10,7 +10,9 @@ const Analyzer = (() => {
   const cx = wc.getContext('2d', { willReadFrequently: true });
   const lc = document.createElement('canvas'); lc.width = 48; lc.height = 36;
   const lx = lc.getContext('2d', { willReadFrequently: true });
-  let W = 0, H = 0, px = null, gray = null, prev = null, hsv = null;
+  let W = 0, H = 0, px = null, gray = null, prev = null, hsv = null, SENS = 1;
+  // حساسية الكاميرا (0.5.2): إعداد المضيف «منخفضة/عادية/عالية» يضرب عتبة فرق البكسل التي طلبتها اللعبة (1.5/1/0.65). «عادية» = 1 = سلوك ما قبلها حرفيًا. اللعبة لا تراه ولا تغيّره.
+  const thrOf = sp => SENS === 1 ? sp.thr : Math.min(160, Math.max(3, sp.thr * SENS));
 
   const clamp = (v, a, b, d) => (typeof v === 'number' && isFinite(v)) ? Math.min(b, Math.max(a, v)) : d;
   function cropRect(video, sw, sh) {
@@ -75,11 +77,11 @@ const Analyzer = (() => {
   }
   function motion(sp) {
     const g = toGray(), cols = sp.cols, rows = sp.rows, cells = new Float32Array(cols * rows), cn = new Uint16Array(cols * rows);
-    let mv = 0, sx = 0, sy = 0;
+    let mv = 0, sx = 0, sy = 0; const thr = thrOf(sp);
     if (!prev || prev.length !== g.length) return { energy: 0, dx: 0, dy: 0, cx: .5, cy: .5, cells: Array.from(cells) };
     for (let y = 0; y < H; y++) { const cr = Math.min(rows - 1, (y * rows / H) | 0);
       for (let x = 0; x < W; x++) { const j = y * W + x, c = cr * cols + Math.min(cols - 1, (x * cols / W) | 0); cn[c]++;
-        if (Math.abs(g[j] - prev[j]) > sp.thr) { cells[c]++; mv++; sx += x; sy += y; } } }
+        if (Math.abs(g[j] - prev[j]) > thr) { cells[c]++; mv++; sx += x; sy += y; } } }
     const ncx = mv ? (sx / mv + .5) / W : .5, ncy = mv ? (sy / mv + .5) / H : .5;
     const pc = sp.pc, dx = pc && mv ? ncx - pc[0] : 0, dy = pc && mv ? ncy - pc[1] : 0; sp.pc = mv ? [ncx, ncy] : null;
     const r = n => +n.toFixed(3);
@@ -97,8 +99,8 @@ const Analyzer = (() => {
   function lanes(sp) {
     const L = sp.count, hit = new Float32Array(L), tot = new Float32Array(L), sx = new Float32Array(L), sy = new Float32Array(L), r3 = v => +v.toFixed(3);
     if (sp.by === 'motion') {
-      const g = toGray(); if (prev && prev.length === g.length) for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-        const j = y * W + x, l = Math.min(L - 1, (x * L / W) | 0); tot[l]++; if (Math.abs(g[j] - prev[j]) > sp.thr) { hit[l]++; sx[l] += x; sy[l] += y; } }
+      const g = toGray(), thr = thrOf(sp); if (prev && prev.length === g.length) for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        const j = y * W + x, l = Math.min(L - 1, (x * L / W) | 0); tot[l]++; if (Math.abs(g[j] - prev[j]) > thr) { hit[l]++; sx[l] += x; sy[l] += y; } }
       else for (let x = 0; x < W; x++) tot[Math.min(L - 1, (x * L / W) | 0)] += H;
     } else {
       const { h, s, v } = toHSV(), c = sp.col;
@@ -144,5 +146,7 @@ const Analyzer = (() => {
     return { h: Math.round(hh), s: +(sv / n).toFixed(2), v: +(vv / n).toFixed(2) };
   }
   function reset() { px = gray = prev = hsv = null; W = H = 0; }
-  return { capture, normColor, normMotion, normLanes, normPlayers, color, motion, lanes, players, lowres, sample, reset, PRESETS };
+  function setSensitivity(k) { SENS = typeof k === 'number' && isFinite(k) ? Math.min(2, Math.max(0.4, k)) : 1; }
+  const threshold = sp => thrOf(sp);
+  return { setSensitivity, threshold, sensitivity: () => SENS, capture, normColor, normMotion, normLanes, normPlayers, color, motion, lanes, players, lowres, sample, reset, PRESETS };
 })();

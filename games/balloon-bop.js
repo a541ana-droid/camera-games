@@ -7,7 +7,9 @@
 // @capabilities camera.motion audio haptic hud players.local
 // كل الكاميرا هنا شبكة حركة 5×4 فقط (لا صورة). كل خلية متحركة تدفع البالون بعيدًا عنها فتُحرّكه الأيدي من تحته.
 
-const GC = 5, GR = 4, ROUND = 50, G = 0.1, REACH = 0.34, PUSH = 11, FLOOR = 0.86, HIGH = 0.72, NOISE = 0.035;
+// إعدادات الأسرة (ENGINE.md §3.5): RS يضرب مدة الجولة، DIFF 0 سهل / 1 عادي (سلوك ما قبلها حرفيًا) / 2 صعب. by3(سهل، عادي، صعب).
+let RS = 1, DIFF = 1; const by3 = (e, m, h) => DIFF === 0 ? e : DIFF === 2 ? h : m;
+const GC = 5, GR = 4, REACH = 0.34; let ROUND = 50, G = 0.1, PUSH = 11, SECOND = 20; const FLOOR = 0.86, HIGH = 0.72, NOISE = 0.035;
 const HUES = [['#ff6b8b', '#ffb3c6'], ['#4da3ff', '#a8d4ff'], ['#ffc145', '#ffe6a3']];
 const NP = 70, P = new Float32Array(NP * 7); // x y vx vy life size colourIdx
 let lost = 0, api, ui, mot, state = 'intro', cells = [], t = 0, air = 0, taps = 0, drops = 0, streak = 0, best = 0, W = 400, H = 700, names = ['1'], seed = 0;
@@ -31,7 +33,8 @@ function nudge(b, f) { b.vy = Math.min(b.vy, 0) - f; }
 
 defineGame({
   init(a) {
-    api = a; ui = a.ui; B[0].y = 0.7; const s = api.view.size(); W = s.w; H = s.h;
+    api = a; ui = a.ui; RS = (a.prefs && a.prefs.roundScale) || 1; DIFF = a.prefs ? a.prefs.difficulty : 1; B[0].y = 0.7; const s = api.view.size(); W = s.w; H = s.h;
+    ROUND = Math.round(50 * RS); SECOND = by3(1e9, 20 * RS, 12 * RS); G = by3(0.055, 0.1, 0.13); PUSH = by3(14, 11, 10); // سهل: بالون واحد أبطأ سقوطًا
     names = api.players.local({ names: ['1'] }).names;
     mot = api.track.motion({ grid: [GC, GR], threshold: 24 }, d => { cells = d.cells; });
     api.hud.set({ title: 'البالون الطائر', score: '0' });
@@ -51,7 +54,7 @@ defineGame({
     for (const c of CL) { c.x += c.v * dt; if (c.x > 1.3) c.x = -0.3; }
     for (let i = 0; i < NP; i++) { const o = i * 7; if (P[o + 4] > 0) { P[o + 4] -= dt; P[o] += P[o + 2] * dt; P[o + 1] += P[o + 3] * dt; P[o + 3] += 0.35 * dt; } }
     if (state !== 'play') return;
-    t += dt; if (t > 20 && !B[1].on) { B[1].on = 1; B[1].x = .75; B[1].y = -.08; B[1].vx = B[1].vy = 0; ui.pop('بالون ثانٍ!', W / 2, H * 0.3, ui.theme.warn); api.audio.melody([{ freq: 523, ms: 90 }, { freq: 784, ms: 120 }]); }
+    t += dt; if (t > SECOND && !B[1].on) { B[1].on = 1; B[1].x = .75; B[1].y = -.08; B[1].vx = B[1].vy = 0; ui.pop('بالون ثانٍ!', W / 2, H * 0.3, ui.theme.warn); api.audio.melody([{ freq: 523, ms: 90 }, { freq: 784, ms: 120 }]); }
     let allUp = true, pushed = 0;
     for (const b of B) {
       if (!b.on) continue;

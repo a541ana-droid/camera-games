@@ -7,7 +7,9 @@
 // @capabilities camera.view camera.motion audio haptic hud players.local
 // هنا عرض الكاميرا هو لبّ اللعبة: تُظهر الصورة خافتة خلف الفقاعات (إن أطفأها المستخدم من القائمة تبقى اللعبة تعمل على خلفية المحرك).
 
-const TAU = 6.2832, ROUND = 50, GOLD_EVERY = 9;
+// إعدادات الأسرة (ENGINE.md §3.5): RS يضرب مدة الجولة، DIFF 0 سهل / 1 عادي (سلوك ما قبلها حرفيًا) / 2 صعب. by3(سهل، عادي، صعب).
+let RS = 1, DIFF = 1; const by3 = (e, m, h) => DIFF === 0 ? e : DIFF === 2 ? h : m;
+const TAU = 6.2832, GOLD_EVERY = 9; let ROUND = 50, BSPD = 1, BSZ = 1, POPE = 0.1;
 const PASTEL = ['#7fd4ff', '#ff9ed2', '#ffe27a', '#9af0c4', '#c3a6ff'];
 let api, ui, state = 'intro', mode = 'shared', count = 2, handle = null, cells = [], GC = 8, GR = 12, t = 0, left = ROUND, W = 400, H = 700, spawnN = 0, endIn = -1;
 const score = [0, 0, 0, 0], B = [], P = [], PN = 160; let pi = 0, BN = 7;
@@ -21,10 +23,10 @@ function emit(x, y, col, n, spd, size, ring) {
 function laneOf(x) { return mode === 'split' ? Math.min(count - 1, Math.floor(x / (W / count))) : 0; }
 function colorOf(b) { return mode === 'split' ? ui.theme.players[b.lane].color : PASTEL[spawnN % PASTEL.length]; }
 function spawn(b, lane) {
-  const m = Math.min(W, H), lw = mode === 'split' ? W / count : W; b.r = Math.min(150, m * (0.12 + Math.random() * 0.05)); if (mode === 'split') b.r = Math.min(b.r, lw * 0.36);
+  const m = Math.min(W, H), lw = mode === 'split' ? W / count : W; b.r = Math.min(150 * BSZ, m * (0.12 + Math.random() * 0.05) * BSZ); if (mode === 'split') b.r = Math.min(b.r, lw * 0.36);
   const l0 = mode === 'split' ? (lane == null ? Math.floor(Math.random() * count) : lane) : 0, x0 = mode === 'split' ? l0 * lw : 0;
   b.y = H + b.r + Math.random() * H * 0.12; for (let k = 0; k < 6; k++) { b.x = x0 + b.r + Math.random() * Math.max(1, lw - 2 * b.r); let free = true; for (const o of B) if (o !== b && o.on && Math.hypot(o.x - b.x, o.y - b.y) < (o.r + b.r) * 0.95) free = false; if (free) break; }
-  b.vy = H * (0.07 + Math.random() * 0.05); b.ph = Math.random() * TAU; b.sw = b.r * (0.2 + Math.random() * 0.3);
+  b.vy = H * (0.07 + Math.random() * 0.05) * BSPD; b.ph = Math.random() * TAU; b.sw = b.r * (0.2 + Math.random() * 0.3);
   b.lane = l0; spawnN++; b.gold = spawnN % GOLD_EVERY === 0; b.col = b.gold ? '#ffd24a' : colorOf(b); b.on = true; b.age = 0;
 }
 function popB(b) {
@@ -51,7 +53,7 @@ function energyAt(b) { // أقوى حركة تحت الفقاعة: حد أقصى
 
 defineGame({
   init(a) {
-    api = a; ui = a.ui; api.view.showCamera(true); const s = api.view.size(); W = s.w; H = s.h; if (W > H) { GC = 12; GR = 8; }
+    api = a; ui = a.ui; RS = (a.prefs && a.prefs.roundScale) || 1; DIFF = a.prefs ? a.prefs.difficulty : 1; api.view.showCamera(true); ROUND = Math.round(50 * RS); left = ROUND; BSPD = by3(0.6, 1, 1.35); BSZ = by3(1.25, 1, 0.9); POPE = by3(0.06, 0.1, 0.14); const s = api.view.size(); W = s.w; H = s.h; if (W > H) { GC = 12; GR = 8; }
     count = Math.max(2, Math.min(4, api.players.local({ names: ['1', '2'] }).names.length)); layout(W, H); api.hud.set({ title: 'فقاعات' });
   },
   onResize(w, h) { W = w; H = h; layout(w, h); },
@@ -69,7 +71,7 @@ defineGame({
       const b = B[i]; if (!b.on) { spawn(b, mode === 'split' ? i % count : null); continue; }
       b.age += dt; b.y -= b.vy * dt; b.ph += dt * 1.3; const sx = Math.sin(b.ph) * b.sw * dt * 1.3; b.x += sx;
       if (b.y < -b.r * 1.2) { b.on = false; continue; }
-      if (b.age > 0.5 && b.y < H + b.r * 0.2 && energyAt(b) > 0.1) popB(b);
+      if (b.age > 0.5 && b.y < H + b.r * 0.2 && energyAt(b) > POPE) popB(b);
     }
     api.hud.set({ time: String(Math.max(0, Math.ceil(left))) });
     if (endIn < 0 && left <= 0) endIn = 0.5;

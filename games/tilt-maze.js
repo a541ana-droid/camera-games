@@ -7,7 +7,9 @@
 // @capabilities motion.device audio haptic hud players.local
 // يحتاج مستشعر حركة. الميل x يمين/يسار و y أمام/خلف من -1 إلى 1 (كما في كرة الميزان). الدور: لكل لاعب 60 ثانية، ثم يُمرَّر الجوال.
 
-const TAU = 6.2832, ROUND = 60, ACC = 26, FRIC = 2.4, VMAX = 6.5, BR = 0.3;
+// إعدادات الأسرة (ENGINE.md §3.5): RS يضرب مدة الجولة، DIFF 0 سهل / 1 عادي (سلوك ما قبلها حرفيًا) / 2 صعب. by3(سهل، عادي، صعب).
+let RS = 1, DIFF = 1; const by3 = (e, m, h) => DIFF === 0 ? e : DIFF === 2 ? h : m;
+const TAU = 6.2832, FRIC = 2.4, BR = 0.3; let ROUND = 60, ACC = 26, VMAX = 6.5, HOLES = true, GOALR = 0.42;
 const LV = [
   ['#######', '#S...*#', '#.###.#', '#.#...#', '#.#.###', '#...*.#', '###.#.#', '#G..O.#', '#######'],
   ['#######', '#S...*#', '#.###.#', '#.*#..#', '#.##.##', '#..O..#', '#.....#', '#*.#.G#', '#######'],
@@ -55,7 +57,7 @@ function collide() { // كرة (دائرة) ضد خلايا الجدران
 
 defineGame({
   init(a) {
-    api = a; ui = a.ui; const s = api.view.size(); W = s.w; H = s.h; names = api.players.local({ names: ['1'] }).names; count = Math.max(1, Math.min(4, names.length));
+    api = a; ui = a.ui; RS = (a.prefs && a.prefs.roundScale) || 1; DIFF = a.prefs ? a.prefs.difficulty : 1; ROUND = Math.round(60 * RS); left = ROUND; ACC = by3(20, 26, 30); VMAX = by3(4.8, 6.5, 7.5); HOLES = DIFF !== 0; GOALR = by3(0.6, 0.42, 0.38); const s = api.view.size(); W = s.w; H = s.h; names = api.players.local({ names: ['1'] }).names; count = Math.max(1, Math.min(4, names.length));
     api.sensors.motion(d => { tx = d.x; ty = d.y; }); layout(W, H); api.hud.set({ title: 'متاهة الميلان' });
   },
   onResize(w, h) { W = w; H = h; layout(w, h); },
@@ -81,11 +83,11 @@ defineGame({
       for (const p of find(lvl, '*')) if (!got[k(p[0], p[1])] && Math.hypot(bx - p[0], by - p[1]) < 0.5) {
         got[k(p[0], p[1])] = 1; stars++; const q = toPx(p[0], p[1]); ui.pop(1, q[0], q[1] - 20, ui.theme.warn); emit(q[0], q[1], '#ffd24a', 14, 150, 4); api.audio.tone({ freq: 660, ms: 120, slide: 360, vol: 0.25 }); api.haptic(25);
       }
-      for (const p of find(lvl, 'O')) if (Math.hypot(bx - p[0], by - p[1]) < 0.4) {
+      for (const p of find(lvl, 'O')) if (HOLES && Math.hypot(bx - p[0], by - p[1]) < 0.4) {
         fallT = 0.5; vx = vy = 0; bx = p[0]; by = p[1]; left -= 3; const q = toPx(p[0], p[1]); ui.pop('−3 ث', q[0], q[1] - 30, ui.theme.bad); ui.flash(ui.theme.bad, 0.2); api.audio.tone({ freq: 400, ms: 300, slide: -300, vol: 0.25 }); api.haptic(60);
       }
       const gl = find(lvl, 'G')[0];
-      if (Math.hypot(bx - gl[0], by - gl[1]) < 0.42) {
+      if (Math.hypot(bx - gl[0], by - gl[1]) < GOALR) {
         done++; const q = toPx(gl[0], gl[1]); emit(q[0], q[1], '#3ddc97', 24, 220, 5); emit(q[0], q[1], '#ffffff', 10, 160, 3); api.audio.melody([{ freq: 523, ms: 90 }, { freq: 659, ms: 90 }, { freq: 784, ms: 150 }]); api.haptic(50); ui.flash(ui.theme.ok, 0.25);
         if (lvl + 1 >= LV.length) { endTurn(true); return; }
         state = 'between'; btw = 1.2; ui.pop('أحسنت!', W / 2, H * 0.35, ui.theme.ok);
@@ -122,7 +124,7 @@ defineGame({
       } else { ctx.globalAlpha = 0.5; ctx.fillStyle = '#2c2558'; ctx.beginPath(); ctx.roundRect(px + 2, py + 2, c - 4, c - 4, rad * 0.6); ctx.fill(); ctx.globalAlpha = 1; }
     }
     const s0 = find(lvl, 'S')[0], sp = toPx(s0[0], s0[1]); ctx.strokeStyle = th.accent; ctx.globalAlpha = 0.5; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(sp[0], sp[1], c * 0.3, 0, TAU); ctx.stroke(); ctx.globalAlpha = 1;
-    for (const p of find(lvl, 'O')) { // ثقب
+    if (HOLES) for (const p of find(lvl, 'O')) { // ثقب (لا ثقوب في «سهل»)
       const q = toPx(p[0], p[1]); ctx.fillStyle = th.bad; ctx.globalAlpha = 0.28; ctx.beginPath(); ctx.arc(q[0], q[1], c * 0.5, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
       ctx.fillStyle = '#05030c'; ctx.beginPath(); ctx.arc(q[0], q[1], c * 0.38, 0, TAU); ctx.fill(); ctx.strokeStyle = th.bad; ctx.lineWidth = 3; ctx.stroke();
       ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(q[0] + c * 0.04, q[1] + c * 0.05, c * 0.22, 0, TAU); ctx.fill();

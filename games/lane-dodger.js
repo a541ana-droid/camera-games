@@ -8,7 +8,9 @@
 // الإحداثيات: api.track.lanes يعطي لكل حارة مركز الحركة cx (إحداثيات الشاشة كلها) فنحوّله إلى موضع داخل الحارة نفسها.
 // عند لاعب واحد تُستعمل api.track.motion على الشاشة كلها. النيازك واحدة لكل الحارات (عدل بين اللاعبين).
 
-const TAU = 6.2832, ROUND = 60, LIVES = 3;
+// إعدادات الأسرة (ENGINE.md §3.5): RS يضرب مدة الجولة، DIFF 0 سهل / 1 عادي (سلوك ما قبلها حرفيًا) / 2 صعب. by3(سهل، عادي، صعب).
+let RS = 1, DIFF = 1; const by3 = (e, m, h) => DIFF === 0 ? e : DIFF === 2 ? h : m;
+const TAU = 6.2832; let ROUND = 60, LIVES = 3, OV0 = 0.3, OVK = 0.17, OGAP = 1;
 let api, ui, state = 'intro', count = 2, handle = null, lanes = [], t = 0, W = 400, H = 700, endIn = -1, names = [];
 const px = [], life = [], alive = [], tDead = [], dodged = [], inv = [], hurt = [], absent = [];
 const OB = [], parts = [], PN = 140; let pi = 0, nextSpawn = 0, prevX = 0.5, oid = 0;
@@ -42,8 +44,8 @@ function spawn() {
   const w = 0.5, g = geom(W, H), half = g.rb / g.lw; let x = half + Math.random() * (1 - 2 * half);
   if (Math.abs(x - prevX) < 0.18) x = x < 0.5 ? Math.min(1 - half, x + 0.3) : Math.max(half, x - 0.3);
   prevX = x; const k = Math.min(1, t / 45);
-  OB.push({ id: oid++, t0: t, x, v: 0.3 + 0.17 * k, hue: Math.random() < 0.5 ? 0 : 1, rot: Math.random() * TAU, done: 0, w });
-  nextSpawn = t + 1.3 - 0.4 * k + Math.random() * 0.3;
+  OB.push({ id: oid++, t0: t, x, v: OV0 + OVK * k, hue: Math.random() < 0.5 ? 0 : 1, rot: Math.random() * TAU, done: 0, w });
+  nextSpawn = t + (1.3 - 0.4 * k) * OGAP + Math.random() * 0.3;
 }
 function finish() {
   state = 'over'; stopTrack(); const sc = [], key = [];
@@ -60,7 +62,7 @@ function hit(i, g, ox, oy) {
 }
 
 defineGame({
-  init(a) { api = a; ui = a.ui; const s = api.view.size(); W = s.w; H = s.h; names = api.players.local({ names: ['1', '2'] }).names; count = Math.max(1, Math.min(4, names.length)); layout(W, H); api.hud.set({ title: 'تفادى!' }); },
+  init(a) { api = a; ui = a.ui; RS = (a.prefs && a.prefs.roundScale) || 1; DIFF = a.prefs ? a.prefs.difficulty : 1; ROUND = Math.round(60 * RS); LIVES = by3(5, 3, 2); OV0 = by3(0.2, 0.3, 0.36); OVK = by3(0.08, 0.17, 0.22); OGAP = by3(1.5, 1, 0.85); const s = api.view.size(); W = s.w; H = s.h; names = api.players.local({ names: ['1', '2'] }).names; count = Math.max(1, Math.min(4, names.length)); layout(W, H); api.hud.set({ title: 'تفادى!' }); },
   onResize(w, h) { W = w; H = h; layout(w, h); },
   onTap(x, y) {
     if (state !== 'intro') return;
@@ -109,7 +111,7 @@ defineGame({
       if (i) { ctx.strokeStyle = th.line; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x0, g.top - 10); ctx.lineTo(x0, h); ctx.stroke(); }
       if (state !== 'intro') { // أرواح وعدّاد البقاء
         ui.playerChip(ctx, i, cx, ui.safe.top + 28, { label: '', score: dead ? 'خرج' : ui.num(Math.round(alive[i] ? t : tDead[i])) + ' ث', size: Math.min(36, lw * 0.5), active: !dead });
-        for (let k = 0; k < LIVES; k++) { const hx = cx + (k - 1) * Math.min(22, lw * 0.22), hy = ui.safe.top + 58; ctx.beginPath(); ctx.arc(hx, hy, 7, 0, TAU); if (k < life[i]) { ctx.fillStyle = pc; ctx.fill(); } else { ctx.strokeStyle = th.mut; ctx.lineWidth = 2; ctx.stroke(); } }
+        for (let k = 0; k < LIVES; k++) { const hx = cx + (k - (LIVES - 1) / 2) * Math.min(22, lw * 0.22), hy = ui.safe.top + 58; ctx.beginPath(); ctx.arc(hx, hy, 7, 0, TAU); if (k < life[i]) { ctx.fillStyle = pc; ctx.fill(); } else { ctx.strokeStyle = th.mut; ctx.lineWidth = 2; ctx.stroke(); } }
       }
     }
     for (const o of OB) { // النيازك المشتركة
@@ -120,8 +122,7 @@ defineGame({
         ctx.globalAlpha = 0.18; ctx.beginPath(); ctx.arc(ox, oy, r * 1.5, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
         ctx.fillStyle = '#3a2a4a'; ctx.beginPath(); ctx.arc(ox, oy, r, 0, TAU); ctx.fill();
         ctx.fillStyle = core; ctx.beginPath(); ctx.arc(ox - r * 0.12, oy - r * 0.12, r * 0.82, 0, TAU); ctx.fill();
-        ctx.fillStyle = '#3a2a4a'; for (let k = 0; k < 3; k++) { const a = rot + k * 2.1; ctx.beginPath(); ctx.arc(ox + Math.cos(a) * r * 0.45, oy + Math.sin(a) * r * 0.45, r * 0.16, 0, TAU); ctx.fill(); }
-        ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.arc(ox - r * 0.38, oy - r * 0.4, r * 0.18, 0, TAU); ctx.fill();
+        ctx.globalAlpha = 0.35; ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(ox - r * 0.12, oy - r * 0.12, r * 0.42, 0, TAU); ctx.fill(); ctx.globalAlpha = 1; // قلب متوهّج في الوسط فقط: لا نقاط ولا أقواس داخلية (كانت تُقرأ وجهًا)
       }
     }
     for (let i = 0; i < count; i++) { // اللاعبون
@@ -130,7 +131,7 @@ defineGame({
         const blink = inv[i] > 0 && Math.floor(inv[i] * 12) % 2 === 0;
         if (!blink) {
           ctx.globalAlpha = 0.25; ctx.fillStyle = pc; ctx.beginPath(); ctx.arc(x, g.py, g.pr * 2.1, 0, TAU); ctx.fill(); ctx.globalAlpha = 0.35; ctx.beginPath(); ctx.arc(x, g.py, g.pr * 1.5, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
-          ui.shape(ctx, i, x, g.py, g.pr * 1.15); ctx.fillStyle = th.bg; ctx.beginPath(); ctx.arc(x - g.pr * 0.3, g.py - g.pr * 0.1, g.pr * 0.14, 0, TAU); ctx.arc(x + g.pr * 0.3, g.py - g.pr * 0.1, g.pr * 0.14, 0, TAU); ctx.fill();
+          ui.shape(ctx, i, x, g.py, g.pr * 1.15); // اللاعب: شكله ولونه فقط (بلا عيون)
         }
         if (absent[i] > 1.2 && state === 'play') ui.text(ctx, 'لوّح أو تحرّك!', i * lw + lw / 2, g.py + g.pr * 3, Math.min(15, lw * 0.16), th.fg);
       } else { ctx.globalAlpha = 0.5; ctx.fillStyle = th.bg; ctx.fillRect(x0, g.top - 6, lw, h); ctx.globalAlpha = 1; }

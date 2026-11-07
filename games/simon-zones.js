@@ -8,7 +8,9 @@
 // لاعب واحد: شبكة حركة 2×2 على الشاشة كلها. لاعبان فأكثر: حارات (api.track.lanes) ويُحدَّد الربع من مركز الحركة داخل الحارة.
 // المناطق: 0 أعلى يسار، 1 أعلى يمين، 2 أسفل يسار، 3 أسفل يمين (كما تُرى على الشاشة)، 4 الجسم كله، 5 تجمّد.
 
-const ROUND = 50, SHOW = 0.8, ACT = 2.4, RES = 0.9, GRACE = 0.3;
+// إعدادات الأسرة (ENGINE.md §3.5): RS يضرب مدة الجولة، DIFF 0 سهل / 1 عادي (سلوك ما قبلها حرفيًا) / 2 صعب. by3(سهل، عادي، صعب).
+let RS = 1, DIFF = 1; const by3 = (e, m, h) => DIFF === 0 ? e : DIFF === 2 ? h : m;
+let ROUND = 50, SHOW = 0.8, ACT = 2.4, SAYP = 0.65, SAY0 = 2; const RES = 0.9, GRACE = 0.3;
 const ACTION = ['حرّك يدك يسار فوق', 'حرّك يدك يمين فوق', 'حرّك يدك يسار تحت', 'حرّك يدك يمين تحت', 'حرّك جسمك كله', 'تجمّد مكانك'];
 const NP = 60, P = new Float32Array(NP * 6); // x y vx vy life size
 let api, ui, handle = null, state = 'intro', n = 1, names = ['1'], cells = [], lanes = [], t = 0, W = 400, H = 700, seed = 0;
@@ -34,7 +36,7 @@ function sample() { // يملأ cur[] من آخر قياس
 }
 function nextTurn() {
   turn++; let z; do { z = Math.floor(Math.random() * 6); } while (z === lastZ); lastZ = z; zone = z;
-  says = turn <= 2 || Math.random() < 0.65; phase = 'show'; pt = 0;
+  says = turn <= SAY0 || Math.random() < SAYP; phase = 'show'; pt = 0;
   for (let i = 0; i < 4; i++) { hold[i] = 0; mvT[i] = 0; st[i] = 0; }
 }
 function lanePos(i) { return { x: (i + 0.5) * W / n, w: W / n }; }
@@ -61,7 +63,7 @@ function layout(w, h) { ui.row(cntR, 4, h * 0.46, 56, undefined, 440); startR.w 
 function rr(c, x, y, w, h, r) { c.beginPath(); c.roundRect(x, y, w, h, r); }
 
 defineGame({
-  init(a) { api = a; ui = a.ui; const s = api.view.size(); W = s.w; H = s.h; const nm = api.players.local({ names: ['1'] }).names; names = nm; n = Math.max(1, Math.min(4, nm.length)); layout(W, H); api.hud.set({ title: 'سيمون يقول' }); },
+  init(a) { api = a; ui = a.ui; RS = (a.prefs && a.prefs.roundScale) || 1; DIFF = a.prefs ? a.prefs.difficulty : 1; ROUND = Math.round(50 * RS); SHOW = by3(1.3, 0.8, 0.6); ACT = by3(3.6, 2.4, 1.8); SAYP = by3(0.85, 0.65, 0.55); SAY0 = by3(4, 2, 1); const s = api.view.size(); W = s.w; H = s.h; const nm = api.players.local({ names: ['1'] }).names; names = nm; n = Math.max(1, Math.min(4, nm.length)); layout(W, H); api.hud.set({ title: 'سيمون يقول' }); },
   onResize(w, h) { W = w; H = h; layout(w, h); },
   onTap(x, y) {
     if (state !== 'intro') return;
@@ -130,11 +132,11 @@ defineGame({
 });
 
 function sc4() { return ui.num(Math.max(...score.slice(0, n))); }
-function face(c, x, y, r, talk, mouth) { // سيمون: وجه دائري ودود بقبعة
+function face(c, x, y, r, talk, mouth) { // سيمون: قرص ذهبي بتاج وموجات صوت حين يتكلّم (بلا وجه)
   const th = ui.theme, g = c.createRadialGradient(x - r * 0.3, y - r * 0.35, r * 0.1, x, y, r * 1.1); g.addColorStop(0, '#ffe08a'); g.addColorStop(1, '#ff9a3c');
   c.globalAlpha = 0.18; c.fillStyle = th.accent; c.beginPath(); c.arc(x, y, r * 1.3, 0, 7); c.fill(); c.globalAlpha = 1;
   c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill();
-  c.fillStyle = th.accent; c.beginPath(); c.moveTo(x - r * 0.62, y - r * 0.62); c.lineTo(x + r * 0.05, y - r * 1.55); c.lineTo(x + r * 0.62, y - r * 0.62); c.closePath(); c.fill();
-  c.fillStyle = '#3a2a10'; c.beginPath(); c.ellipse(x - r * 0.33, y - r * 0.12, r * 0.1, r * 0.15, 0, 0, 7); c.ellipse(x + r * 0.33, y - r * 0.12, r * 0.1, r * 0.15, 0, 0, 7); c.fill();
-  c.strokeStyle = '#3a2a10'; c.lineWidth = Math.max(2, r * 0.09); c.lineCap = 'round'; c.beginPath(); c.ellipse(x, y + r * 0.22, r * 0.3, r * (talk ? 0.2 + 0.08 * mouth : 0.1), 0, 0, talk ? 3.1416 : 6.283); c.stroke(); c.lineCap = 'butt';
+  c.fillStyle = th.accent; c.beginPath(); c.moveTo(x - r * 0.6, y - r * 0.55); c.lineTo(x - r * 0.6, y - r * 1.25); c.lineTo(x - r * 0.3, y - r * 0.9); c.lineTo(x, y - r * 1.4); c.lineTo(x + r * 0.3, y - r * 0.9); c.lineTo(x + r * 0.6, y - r * 1.25); c.lineTo(x + r * 0.6, y - r * 0.55); c.closePath(); c.fill(); // تاج
+  c.fillStyle = '#3a2a10'; c.beginPath(); c.moveTo(x - r * 0.42, y - r * 0.2); c.lineTo(x - r * 0.12, y - r * 0.2); c.lineTo(x + r * 0.3, y - r * 0.5); c.lineTo(x + r * 0.3, y + r * 0.5); c.lineTo(x - r * 0.12, y + r * 0.2); c.lineTo(x - r * 0.42, y + r * 0.2); c.closePath(); c.fill(); // مكبّر صوت صغير
+  if (talk) { c.strokeStyle = '#3a2a10'; c.lineWidth = Math.max(2, r * 0.09); c.lineCap = 'round'; for (let k = 1; k <= 2; k++) { c.globalAlpha = 0.5 + 0.5 * Math.abs(mouth || 1) / k; c.beginPath(); c.arc(x + r * 0.32, y, r * (0.2 + 0.2 * k), -0.6, 0.6); c.stroke(); } c.globalAlpha = 1; c.lineCap = 'butt'; }
 }

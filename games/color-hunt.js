@@ -7,6 +7,8 @@
 // @capabilities camera.color audio haptic hud
 // سلوك مطابق لنموذج colorhunt/index.html: 5 ألوان، منطقة مركزية، تثبيت 0.6 ث، جولة 20 ث، نقاط 10+الثواني المتبقية.
 
+// إعدادات الأسرة (ENGINE.md §3.5): RS يضرب مدة الجولة، DIFF 0 سهل / 1 عادي (سلوك ما قبلها حرفيًا) / 2 صعب. by3(سهل، عادي، صعب).
+let RS = 1, DIFF = 1; const by3 = (e, m, h) => DIFF === 0 ? e : DIFF === 2 ? h : m;
 const COLORS = [
   { id: 'red', n: 'أحمر', hex: '#e5484d' },
   { id: 'green', n: 'أخضر', hex: '#4cc38a' },
@@ -14,21 +16,22 @@ const COLORS = [
   { id: 'yellow', n: 'أصفر', hex: '#f5d90a' },
   { id: 'orange', n: 'برتقالي', hex: '#f97316' }
 ];
-const ROUND_S = 20, HOLD_S = 0.6, FULL = 0.4;
+let ROUND_S = 20, HOLD_S = 0.6; const FULL = 0.4;
 let api, ui, track, cur = null, state = 'intro', score = 0, left = ROUND_S, hold = 0, hit = false, ratio = 0, W = 400, H = 700;
 
 // لا صورة كاميرا على الشاشة، فلا معنى لمربع مركزي لا يراه اللاعب: نحلّل الإطار كله، واللاعب يملأ جزءًا منه بالشيء الملوّن.
-const ZONE = { x: 0, y: 0, w: 1, h: 1 };
+const ZONE = { x: 0, y: 0, w: 1, h: 1 }; let MINR = 0.12;
 
 function pick() {
   let c; do { c = COLORS[Math.floor(Math.random() * COLORS.length)]; } while (c === cur);
   cur = c; left = ROUND_S; hold = 0;
-  track.set({ name: c.id, zone: ZONE, minRatio: 0.12 });
+  track.set({ name: c.id, zone: ZONE, minRatio: MINR });
 }
 
 defineGame({
   init(a) {
-    api = a; ui = a.ui;
+    api = a; ui = a.ui; RS = (a.prefs && a.prefs.roundScale) || 1; DIFF = a.prefs ? a.prefs.difficulty : 1;
+    ROUND_S = Math.round(20 * RS); HOLD_S = by3(0.3, 0.6, 0.9); MINR = by3(0.07, 0.12, 0.16); left = ROUND_S; // سهل: نصف تثبيت وشيء أصغر يكفي
     track = api.track.color({ name: 'red' }, d => { hit = d.present; ratio = d.ratio; });
     api.hud.set({ score: 'النقاط 0', time: String(ROUND_S) });
   },
@@ -57,7 +60,7 @@ defineGame({
       ctx.lineWidth = 8; ctx.strokeStyle = hit ? th.ok : th.fg; ctx.stroke();
       ui.bigText(ctx, 'أمسك شيئًا ' + cur.n, { y: cy + r + h * 0.07, size: h * 0.045 });
       ui.text(ctx, 'صورتك لا تظهر ولا تُحفظ', cx, cy + r + h * 0.115, 15, th.mut);
-      ui.meter(ctx, ratio, { max: FULL, threshold: 0.12, label: hit ? 'ملتقَط — ثبّته' : 'يُلتقط…', });
+      ui.meter(ctx, ratio, { max: FULL, threshold: MINR, label: hit ? 'ملتقَط — ثبّته' : 'يُلتقط…', });
       ui.progress(ctx, left / ROUND_S);
       ui.progress(ctx, hold / HOLD_S, { y: h - 8, color: th.ok, h: 8 });
     }

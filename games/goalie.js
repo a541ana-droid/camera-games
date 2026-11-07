@@ -7,7 +7,9 @@
 // @capabilities camera.motion camera.lanes audio haptic hud players.local
 // لاعب واحد: شبكة حركة 3×3 (الصدّ بنشاط الخلية أو جارتها). لاعبان فأكثر: حارات، لكل حارة ثلاثة ارتفاعات ويُقاس ارتفاع الحركة من مركزها.
 
-const ROUND = 50, MAXB = 18, WIN = 0.5, CELL_ON = 0.06, NEIGH_ON = 0.15, LANE_ON = 0.035, ROW_TOL = 0.2, ROWS = [0.34, 0.55, 0.76];
+// إعدادات الأسرة (ENGINE.md §3.5): RS يضرب مدة الجولة، DIFF 0 سهل / 1 عادي (سلوك ما قبلها حرفيًا) / 2 صعب. by3(سهل، عادي، صعب).
+let RS = 1, DIFF = 1; const by3 = (e, m, h) => DIFF === 0 ? e : DIFF === 2 ? h : m;
+let ROUND = 50, WIN = 0.5, DUR = 1, GAP = 1; const MAXB = 18, CELL_ON = 0.06, NEIGH_ON = 0.15, LANE_ON = 0.035, ROW_TOL = 0.2, ROWS = [0.34, 0.55, 0.76];
 const NP = 90, P = new Float32Array(NP * 7); // x y vx vy life size kind(0 أخضر،1 أحمر،2 أبيض)
 let api, ui, handle = null, state = 'intro', n = 1, cells = [], lanes = [], t = 0, W = 400, H = 700, seed = 0, over = 0;
 const B = []; for (let i = 0; i < MAXB; i++) B.push({ s: 0, lane: 0, tgt: 0, age: 0, dur: 1.5, blk: false, ox: .5, oy: .5, tx: .5, ty: .5, fade: 0, rot: 0 }); // s: 0 فارغ،1 طائرة،2 صُدّت،3 هدف
@@ -29,7 +31,7 @@ function spawn(lane) {
   let b = null; for (const q of B) if (!q.s) { b = q; break; } if (!b) return;
   const cnt = n === 1 ? 9 : 3; let g; do { g = Math.floor(Math.random() * cnt); } while (g === lastT[lane] && cnt > 1); lastT[lane] = g;
   const k = Math.min(1, t / ROUND), p = slot(lane, g), lw = W / n;
-  b.s = 1; b.lane = lane; b.tgt = g; b.age = 0; b.dur = 1.75 - 0.55 * k + Math.random() * 0.2; b.blk = false; b.fade = 0; b.rot = Math.random() * 6;
+  b.s = 1; b.lane = lane; b.tgt = g; b.age = 0; b.dur = (1.75 - 0.55 * k) * DUR + Math.random() * 0.2; b.blk = false; b.fade = 0; b.rot = Math.random() * 6;
   b.ox = (n === 1 ? 0.5 * W : (lane + 0.5) * lw); b.oy = H * 0.44; b.tx = p[0] + (n === 1 ? 0 : (Math.random() - 0.5) * lw * 0.3); b.ty = p[1];
 }
 function covered(b) { // هل صُدّت الكرة بحسب حركة اللاعب؟
@@ -53,7 +55,7 @@ function finish() {
 }
 
 defineGame({
-  init(a) { api = a; ui = a.ui; const s = api.view.size(); W = s.w; H = s.h; n = Math.max(1, Math.min(4, api.players.local({ names: ['1'] }).names.length)); layout(W, H); api.hud.set({ title: 'حارس المرمى' }); },
+  init(a) { api = a; ui = a.ui; RS = (a.prefs && a.prefs.roundScale) || 1; DIFF = a.prefs ? a.prefs.difficulty : 1; ROUND = Math.round(50 * RS); DUR = by3(1.5, 1, 0.82); GAP = by3(1.6, 1, 0.82); WIN = by3(0.8, 0.5, 0.4); const s = api.view.size(); W = s.w; H = s.h; n = Math.max(1, Math.min(4, api.players.local({ names: ['1'] }).names.length)); layout(W, H); api.hud.set({ title: 'حارس المرمى' }); },
   onResize(w, h) { W = w; H = h; layout(w, h); },
   onTap(x, y) {
     if (state !== 'intro') return;
@@ -65,7 +67,7 @@ defineGame({
     for (let i = 0; i < 4; i++) glow[i] = Math.max(0, glow[i] - dt * 2.5);
     if (state !== 'play') return;
     t += dt; sample(dt); const k = Math.min(1, t / ROUND);
-    if (t < ROUND - 2) for (let i = 0; i < n; i++) { timer[i] -= dt; if (timer[i] <= 0) { spawn(i); timer[i] = 1.45 - 0.6 * k + Math.random() * 0.35; } }
+    if (t < ROUND - 2) for (let i = 0; i < n; i++) { timer[i] -= dt; if (timer[i] <= 0) { spawn(i); timer[i] = (1.45 - 0.6 * k) * GAP + Math.random() * 0.35; } }
     let live = 0;
     for (const b of B) {
       if (!b.s) continue; b.age += dt; b.rot += dt * 6;

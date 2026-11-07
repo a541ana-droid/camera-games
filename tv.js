@@ -1,19 +1,17 @@
 'use strict';
-// وضع التلفاز (الشاشة = المضيف): ردهة برمز QR + رمز من 4 أحرف، قائمة اللاعبين بشخصياتهم، اختيار لعبة وطريقة لعب، وشاشة النتيجة.
+// وضع التلفاز (الشاشة = المضيف): ردهة برمز QR + رمز من 4 أحرف، قائمة اللاعبين بألوانهم وأشكالهم، اختيار لعبة وطريقة لعب، وشاشة النتيجة.
 // يملك جلسة النقل (net.js) ومقاعد الأذرع (≤8). اللعبة نفسها لا ترى شيئًا من هذا: يمرّر لها المحرك قائمة نظيفة ومدخلات أرقام فقط (ENGINE.md §3.4).
 // كل ما يأتي من جوال غير موثوق: الأسماء تُقصّ وتُنظّف، والأرقام تُحصر، والأوامر (اختيار/بدء) لا تُقبل إلا من «القائد» (أصغر لاعب متصل).
 (() => {
-  const E = window.__engine, $ = id => document.getElementById(id), M = window.CGMascot;
+  const E = window.__engine, $ = id => document.getElementById(id), M = window.CGPlayers;
   const MAXP = 8, TEAMN = ['الفريق أ', 'الفريق ب'], TEAMC = ['#ff8a3d', '#a37bff'];
   const MODES = [['free', 'كلٌّ لنفسه'], ['1v1', '1 ضد 1'], ['2v2', '2 ضد 2'], ['teams', 'فريقان']];
   const MODEDESC = { free: 'كل لاعب يجمع لنفسه', '1v1': 'لاعبان وجهًا لوجه', '2v2': 'أربعة: فريقان من لاعبين', teams: 'كل اللاعبين في فريقين' };
   const h = (tag, p, ...kids) => { const e = document.createElement(tag); if (p) for (const k in p) { if (k === 'style') e.style.cssText = p[k]; else if (k in e) e[k] = p[k]; else e.setAttribute(k, p[k]); } e.append(...kids.filter(k => k != null)); return e; };
   const fin = (v, a, b, d) => (typeof v === 'number' && isFinite(v) ? Math.min(b, Math.max(a, v)) : d);
   const clean = (s, n) => String(s == null ? '' : s).replace(/[\u0000-\u001f\u007f-\u009f​-‏‪-‮⁦-⁩<>]/g, '').trim().slice(0, n);
-  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   let S = null; // الجلسة: {code, net, slots[], peerOf Map(peer→slot), mode, game, phase: lobby|playing|result, catalog, last}
-  let raf = 0, cvs = []; // لوحات الشخصيات المرسومة في الردهة/النتيجة
 
   // ---------- كتالوج ألعاب الجوالات (الألعاب التي تعلن players.pads) ----------
   async function catalog() {
@@ -48,7 +46,7 @@
     if (pre) S.game = pre;
     S.phase = 'lobby'; lobby();
   }
-  function close() { if (!S) return; clearInterval(S.statT); for (const p of online()) S.net.send(p.peer, { t: 'bye' }); S.net.close(); S = null; stopAnim(); E.ev('tv-close'); }
+  function close() { if (!S) return; clearInterval(S.statT); for (const p of online()) S.net.send(p.peer, { t: 'bye' }); S.net.close(); S = null; E.ev('tv-close'); }
   function onMsg(peer, m) {
     if (!S || !m || typeof m !== 'object' || typeof m.t !== 'string') return;
     let s = S.peerOf.get(peer);
@@ -108,7 +106,7 @@
   }
   function start(dbgSrc) {
     if (!S) return; const g = typeof dbgSrc === 'string' && E.debug ? { src: dbgSrc, title: dbgSrc } : (reason() ? null : S.catalog.find(x => x.src === S.game)); if (!g) return;
-    S.phase = 'playing'; S.last = null; stopAnim();
+    S.phase = 'playing'; S.last = null;
     for (const p of S.slots) if (p) { p.input.fill(0); p.base = p.acc.slice(); } // كل لعبة تبدأ عدّادَي الضغط من 0 (نسبيًا)، فلا تضيع ضغطة بعد البدء ولا تظهر ضغطات من لعبة سابقة
     for (const p of online()) S.net.send(p.peer, { t: 'play', title: g.title, ctl: { stick: true, a: 'اضغط', b: '', tilt: false } });
     E.ev('tv-start', { game: g.src, mode: S.mode, n: online().length });
@@ -118,7 +116,7 @@
   // ---------- واجهة الردهة ----------
   const view = () => $('tv');
   function lobby() {
-    const v = view(); v.textContent = ''; E.show('tv'); cvs = [];
+    const v = view(); v.textContent = ''; E.show('tv');
     const url = padUrl();
     const qr = h('canvas', { className: 'qr', width: 600, height: 600, 'aria-label': 'رمز QR للانضمام' });
     const top = h('header', { className: 'tvtop' }, h('button', { className: 'ico', onclick: () => { close(); E.show('menu'); }, 'aria-label': 'رجوع إلى القائمة' }, '→'), h('h1', 0, '📺 العب بالجوالات'),
@@ -132,7 +130,7 @@
     v.append(h('div', { className: 'tvw' }, top, join, right));
     loadQR().then(() => drawQR(qr, url), () => drawQR(qr, url)); paintStatus();
     catalog().then(() => { if (!S.game && S.catalog[0]) S.game = S.catalog[0].src; const g = S.catalog.find(x => x.src === S.game); if (g && !g.modes.includes(S.mode)) setMode(g.modes[0]); changed(); }).catch(() => { $('tvGames').textContent = 'تعذّر تحميل قائمة الألعاب'; });
-    paintPlayers(); anim();
+    paintPlayers();
   }
   function padUrl() { // الرابط نفسه + #pad=رمز. نُبقي net/debug فقط (للاختبارات) ولا نضع شيئًا شخصيًا في الرابط
     const q = new URLSearchParams(location.search), keep = new URLSearchParams(); for (const k of ['net', 'debug']) if (q.get(k)) keep.set(k, q.get(k));
@@ -154,15 +152,14 @@
     if (S.net.kind === 'bc') t = 'وضع تجربة: داخل هذا المتصفح فقط';
     el.textContent = t; el.className = 'tvnet' + (/تعذّر/.test(t) ? ' bad' : '');
   }
-  function mascotCanvas(i, mood, px) { const c = h('canvas', { className: 'mc', width: px * 2, height: px * 2, 'aria-hidden': 'true' }); c._m = { i, mood }; cvs.push(c); return c; }
   function paintPlayers() {
-    const box = $('tvPlayers'); if (!box) return; box.textContent = ''; cvs = cvs.filter(c => !box.contains(c) && c.isConnected);
+    const box = $('tvPlayers'); if (!box) return; box.textContent = '';
     const shown = Math.max(4, Math.min(MAXP, Math.ceil(S.slots.length / 4) * 4)), team = teamMode(); // صفوف كاملة: لا خانة فارغة وحيدة في صفّ
     for (let i = 0; i < shown; i++) {
       const p = S.slots[i];
       if (!p) { box.append(h('div', { className: 'pcard empty' }, h('div', { className: 'slot' }, String(i + 1)), h('b', 0, 'بانتظار لاعب…'))); continue; }
       const I = M.info[p.ch], card = h('button', { className: 'pcard' + (p.online ? '' : ' off'), style: '--pc:' + I.color, onclick: () => { if (team && S.mode === 'teams' && S.phase === 'lobby') { p.team = p.team === 0 ? 1 : 0; changed(); } } },
-        mascotCanvas(p.ch, p.online ? 'happy' : 'sad', 70), h('b', 0, p.name), h('small', 0, I.name + (p.online ? '' : ' · انقطع')),
+        M.el(p.ch), h('b', 0, p.name), h('small', 0, I.label + (p.online ? '' : ' · انقطع')),
         team && p.team >= 0 ? h('span', { className: 'team t' + p.team }, TEAMN[p.team]) : null);
       if (!(team && S.mode === 'teams')) card.tabIndex = -1;
       box.append(card);
@@ -177,15 +174,6 @@
     }
     const why = reason(); $('tvStart').disabled = !!why; $('tvWhy').textContent = why || 'أو يبدأ أول لاعب من جواله';
   }
-  // حركة هادئة للشخصيات (≈20 إطار/ث) ما دامت الردهة أو النتيجة ظاهرة؛ تتوقف حين تختفي، ولا حركة مع prefers-reduced-motion
-  function anim() {
-    stopAnim(); let last = 0;
-    const f = ts => { raf = requestAnimationFrame(f); if (view().hidden) return stopAnim(); if (ts - last < 50) return; last = ts; paintMascots(ts / 1000); };
-    paintMascots(0); if (!reduced) raf = requestAnimationFrame(f);
-  }
-  function stopAnim() { if (raf) cancelAnimationFrame(raf); raf = 0; }
-  function paintMascots(t) { for (const c of cvs) { if (!c.isConnected) continue; const g = c.getContext('2d'); g.clearRect(0, 0, c.width, c.height); M.draw(g, c._m.i, c.width / 2, c.height * 0.52, c.width * 0.62, { mood: c._m.mood, look: { x: Math.sin(t * 0.7 + c._m.i) * 0.6, y: 0.1 }, still: reduced }, t); } }
-
   // ---------- النتيجة ----------
   // ترتيب scores/ranks في ألعاب الجوالات = رقم مقعد الجوال (index)؛ teamScores = [أ، ب]. كله يُنقّى هنا (اللعبة غير موثوقة).
   function ended(m) {
@@ -204,19 +192,18 @@
     else { winners = rows.filter(r => r.rank === 1); if (winners.length === 1) title = 'فاز ' + winners[0].p.name + '!'; else if (winners.length > 1 && winners.length < rows.length) title = 'فاز ' + winners.map(r => r.p.name).join(' و') + '!'; else if (winners.length) title = 'تعادل!'; }
     const won = r => (team ? (winT < 0 || r.p.team === winT) : r.rank === 1);
     S.last = { title, team, ts, winT, rows: rows.map(r => ({ index: r.p.index, name: r.p.name, score: r.score, rank: r.rank, won: won(r), team: r.p.team })), text: clean(m.text, 120) };
-    for (const r of rows) if (r.p.online) S.net.send(r.p.peer, { t: 'over', title, won: won(r), mood: won(r) ? 'cheer' : 'wow', line: team ? TEAMN[0] + ' ' + ts[0] + ' — ' + TEAMN[1] + ' ' + ts[1] : r.score !== null ? 'نقاطك ' + r.score : '', leader: r.p === leader() });
+    for (const r of rows) if (r.p.online) S.net.send(r.p.peer, { t: 'over', title, won: won(r), line: team ? TEAMN[0] + ' ' + ts[0] + ' — ' + TEAMN[1] + ' ' + ts[1] : r.score !== null ? 'نقاطك ' + r.score : '', leader: r.p === leader() });
     E.ev('tv-result', S.last);
     result();
   }
   function result() {
-    const v = view(), L = S.last; v.textContent = ''; cvs = []; E.show('tv');
-    const card = r => { const p = S.slots[r.index], ch = p ? p.ch : 0; return h('div', { className: 'rcard' + (r.won ? ' win' : ''), style: '--pc:' + M.info[ch].color }, mascotCanvas(ch, r.won ? 'cheer' : 'wow', 80), h('b', 0, r.name), h('span', { className: 'rs' }, r.score === null ? '—' : String(r.score)), r.rank ? h('small', 0, 'المركز ' + r.rank) : null); };
+    const v = view(), L = S.last; v.textContent = ''; E.show('tv');
+    const card = r => { const p = S.slots[r.index], ch = p ? p.ch : 0; return h('div', { className: 'rcard' + (r.won ? ' win' : ''), style: '--pc:' + M.info[ch].color }, M.el(ch), h('b', 0, r.name), h('span', { className: 'rs' }, r.score === null ? '—' : String(r.score)), r.rank ? h('small', 0, 'المركز ' + r.rank) : null); };
     let body;
     if (L.team) body = h('div', { className: 'rteams' }, ...[0, 1].map(t => h('div', { className: 'rteam t' + t + (L.winT === t ? ' win' : '') }, h('h2', 0, TEAMN[t]), h('div', { className: 'rbig' }, String(L.ts[t])), h('div', { className: 'rrow' }, ...L.rows.filter(r => r.team === t).map(card)))));
     else body = h('div', { className: 'rrow' }, ...L.rows.slice().sort((a, b) => (a.rank || 99) - (b.rank || 99)).map(card));
     v.append(h('div', { className: 'tvres' }, h('h1', 0, L.title), L.text ? h('p', { className: 'rtext' }, L.text) : null, body,
       h('div', { className: 'row' }, h('button', { className: 'pri big', id: 'tvAgain', onclick: start }, '↻ العب مرة أخرى'), h('button', { className: 'big', onclick: () => { S.phase = 'lobby'; lobby(); changed(); } }, 'الردهة'))));
-    anim();
   }
   // اللعبة توقفت (خطأ أو خروج بـ✕): رسالة قصيرة ثم الردهة
   function stopped(why) {
@@ -228,7 +215,7 @@
   // ---------- جسر المحرك (Pads) ----------
   window.Pads = {
     active: () => !!S, playing: () => !!S && S.phase === 'playing', mode: () => (S ? S.mode : 'free'),
-    snapshot: () => (S ? S.slots.filter(Boolean).map(p => ({ index: p.index, name: p.name, character: p.ch, color: M.info[p.ch].color, team: p.team, connected: !!p.online })) : []),
+    snapshot: () => (S ? S.slots.filter(Boolean).map(p => ({ index: p.index, name: p.name, colorIndex: p.ch, color: M.info[p.ch].color, team: p.team, connected: !!p.online })) : []),
     inputs() { const out = []; if (S) for (const p of S.slots) if (p) { const st = p.online && performance.now() - (p.inAt || 0) < 1500; out.push(p.index, st ? p.input[0] : 0, st ? p.input[1] : 0, st ? p.input[2] : 0, st ? p.input[3] : 0, p.acc[0] - p.base[0], p.acc[1] - p.base[1], st ? p.input[6] : 0, st ? p.input[7] : 0); } return out; },
     say(i, text) { if (!S) return; const t = clean(text, 60); for (const p of online()) if (i < 0 || p.index === i) S.net.send(p.peer, { t: 'say', text: t }); },
     vibrate(i, ms) { if (!S) return; ms = fin(ms, 1, 300, 40) | 0; for (const p of online()) if (i < 0 || p.index === i) S.net.send(p.peer, { t: 'vib', ms }); },

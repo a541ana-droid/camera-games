@@ -1,5 +1,5 @@
 // وضع التلفاز والأذرع عبر BroadcastChannel (?net=bc، بلا إنترنت): شاشة 1920×1080 + 2–4 جوالات 390×844 في تبويبات المتصفح نفسه.
-// يختبر: الردهة والرمز وQR، الانضمام بالاسم والشخصية، وصول العصا والأزرار إلى اللعبة داخل Worker، المغادرة وإعادة الانضمام إلى المقعد نفسه،
+// يختبر: الردهة والرمز وQR، الانضمام بالاسم واللون/الشكل، وصول العصا والأزرار إلى اللعبة داخل Worker، المغادرة وإعادة الانضمام إلى المقعد نفسه،
 // نتيجة الفريقين، بدء القائد من جواله، الخروج إلى الردهة، فرق الدوري للاعبين المحليين، وأن الشبكة لا تصل اللعبة (المسبار لا يرى إلا الحقول المعلنة).
 import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -45,10 +45,10 @@ try {
   for (let i = 0; i < 4; i++) pads.push(await openPad(st.url, i));
   await until(async () => (await host()).pads.filter(p => p.connected).length === 4, 8000);
   st = await host();
-  ok('4 pads joined with name, character, colour, index', st.pads.length === 4 && st.pads.every((p, i) => p.name === NAMES[i] && p.character === i && p.index === i && /^#[0-9a-f]{6}$/.test(p.color)), st.pads);
+  ok('4 pads joined with name, colour/shape pick, colour, index', st.pads.length === 4 && st.pads.every((p, i) => p.name === NAMES[i] && p.colorIndex === i && p.index === i && /^#[0-9a-f]{6}$/.test(p.color)), st.pads);
   const pv = await Promise.all(pads.map(p => p.ev('PadApp.state()')));
   ok('every pad reached its lobby view; only the first is leader', pv.every(v => v.view === 'lobby') && (await pads[0].ev(`!!document.querySelector('.plead')`)) && !(await pads[1].ev(`!!document.querySelector('.plead')`)), pv.map(v => v.view));
-  ok('TV lobby shows 4 player cards with mascots', (await c.ev(`document.querySelectorAll('#tvPlayers .pcard:not(.empty) canvas.mc').length`)) === 4);
+  ok('TV lobby shows 4 player cards, each a plain colour shape (svg.psh, no canvas art)', (await c.ev(`[...document.querySelectorAll('#tvPlayers .pcard:not(.empty)')].map(e => e.querySelector('svg.psh') ? e.querySelector('svg.psh').dataset.shape : '-').join()`)) === 'circle,triangle,square,diamond' && (await c.ev(`document.querySelectorAll('#tv canvas:not(.qr)').length`)) === 0);
   await shot(c, 'tv-lobby'); await shot(pads[0], 'phone-lobby-leader'); await shot(pads[1], 'phone-lobby');
   // (1) المسبار: كلٌّ لنفسه
   await c.ev(`Pads._play('tests/games/pad-probe.js')`);
@@ -79,8 +79,8 @@ try {
   const d1 = (await hostEvents('end'))[0]; let probe = {}; try { probe = JSON.parse(d1.text); } catch { }
   ok('button taps counted per pad (edge counters, none lost)', probe.taps && probe.taps[0] === 1 && probe.taps[1] === 2 && probe.taps[2] === 5 && probe.taps[3] === 4, probe.taps);
   ok('join/leave events delivered to the game', probe.leaves >= 2 && probe.joins >= 1 && probe.maxX[0] > 0.8, { joins: probe.joins, leaves: probe.leaves, maxX: probe.maxX });
-  ok('game sees only the declared pad fields (no peer ids, no network objects)', Array.isArray(probe.list) && probe.list.every(p => Object.keys(p).sort().join() === 'character,color,connected,index,name,team'), probe.list && probe.list[0]);
-  ok('ui.mascot exists in the kit; free mode → api.teams off', probe.hasMascot === true && probe.teamsOn === false && probe.mode === 'free', probe);
+  ok('game sees only the declared pad fields (no peer ids, no network objects)', Array.isArray(probe.list) && probe.list.every(p => Object.keys(p).sort().join() === 'color,colorIndex,connected,index,name,team'), probe.list && probe.list[0]);
+  ok('no character art in the kit (ui / ui.theme); free mode → api.teams off', probe.kitNoArt === true && probe.teamsOn === false && probe.mode === 'free', probe);
   ok('results screen ranks the pads (rank 1 = most taps)', end1 && !end1.team && end1.rows.find(r => r.index === 2).rank === 1, end1 && end1.rows);
   ok('pads show their result (winner cheers)', !!(await until(() => pads[2].ev(`PadApp.state().view==='result' && /فزت/.test(document.body.textContent)`), 4000)));
   await shot(c, 'tv-result-free'); await shot(pads[2], 'phone-result');

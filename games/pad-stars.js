@@ -1,15 +1,17 @@
 // @title صيد النجوم
-// @desc كل لاعب يحرّك شخصيته بعصا جواله ويجمع النجوم المتساقطة في الساحة. الزرّ يعطي اندفاعة سريعة. النجمة الكبيرة بثلاث نقاط!
-// @howto حرّك شخصيتك بالعصا واجمع النجوم
+// @desc كل لاعب يحرّك شكله الملوّن بعصا جواله ويجمع النجوم المتساقطة في الساحة. الزرّ يعطي اندفاعة سريعة. النجمة الكبيرة بثلاث نقاط!
+// @howto حرّك شكلك بالعصا واجمع النجوم
 // @howto-act joystick
 // @accent #ffc145
 // @engine 0.5
 // @capabilities players.pads audio hud
 // @pads 1-8 free 1v1 2v2 teams
 // @series no
-// مرجع لعبة جوالات: api.pads (القائمة، المدخلات، الانضمام والمغادرة، رسائل الجوال)، api.teams، والشخصيات ui.mascot.
+// مرجع لعبة جوالات: api.pads (القائمة، المدخلات، الانضمام والمغادرة، رسائل الجوال)، api.teams، ولون كل لاعب وشكله (ui.shape).
 
-const ROUND = 60, SPEED = 0.42, DASH = 2.4, DASHT = 0.28, DASHCD = 1.4, NS = 7, NP = 90;
+// إعدادات الأسرة (ENGINE.md §3.5): RS يضرب مدة الجولة، DIFF 0 سهل / 1 عادي (سلوك ما قبلها حرفيًا) / 2 صعب. by3(سهل، عادي، صعب).
+let RS = 1, DIFF = 1; const by3 = (e, m, h) => DIFF === 0 ? e : DIFF === 2 ? h : m;
+let ROUND = 60, GRAB = 1; const SPEED = 0.42, DASH = 2.4, DASHT = 0.28, DASHCD = 1.4, NS = 7, NP = 90;
 let api, ui, state = 'ready', t = 0, left = ROUND, W = 800, H = 600, readyT = 0, ended = false;
 const pl = []; // لكل مقعد: {x,y,vx,vy,score,dash,cd,ready,look,face,mood,moodT}
 const stars = []; for (let i = 0; i < NS; i++) stars.push({ x: 0, y: 0, big: false, t: 0, on: false });
@@ -47,9 +49,13 @@ function finish() {
   api.end({ score: list.reduce((s, p) => s + (pl[p.index] ? pl[p.index].score : 0), 0), scores, teamScores: ts, text });
 }
 
+function tok(c, i, x, y, sz, mood) { // اللاعب = لونه وشكله فقط (DESIGN.md §2)، بلا وجه: cheer نبضة خفيفة، wow حلقة بيضاء
+  const r = sz * 0.4 * (mood === 'cheer' && !ui.still ? 1 + 0.08 * Math.sin(ui.t * 10) : 1); ui.shape(c, i, x, y, r);
+  if (mood === 'wow') { c.save(); c.strokeStyle = 'rgba(255,255,255,0.8)'; c.lineWidth = Math.max(2, r * 0.12); c.beginPath(); c.arc(x, y, r * 1.4, 0, 6.283); c.stroke(); c.restore(); }
+}
 defineGame({
   init(a) {
-    api = a; ui = a.ui; const s = api.view.size(); W = s.w; H = s.h; arena(W, H);
+    api = a; ui = a.ui; RS = (a.prefs && a.prefs.roundScale) || 1; DIFF = a.prefs ? a.prefs.difficulty : 1; ROUND = Math.round(60 * RS); left = ROUND; GRAB = by3(1.45, 1, 0.85); const s = api.view.size(); W = s.w; H = s.h; arena(W, H);
     for (const p of api.pads.list) seat(p.index);
     api.pads.onJoin(p => { const q = pl[p.index] || seat(p.index); if (state === 'ready') q.ready = false; api.pads.say(p.index, state === 'play' ? 'ادخل واجمع النجوم!' : 'اضغط «جاهز»'); });
     api.pads.onLeave(p => { if (pl[p.index]) pl[p.index].ready = false; });
@@ -78,7 +84,7 @@ defineGame({
       q.x = Math.min(0.97, Math.max(0.03, q.x + q.vx * dt)); q.y = Math.min(0.95, Math.max(0.05, q.y + q.vy * dt));
       if (Math.abs(s.x) + Math.abs(s.y) > 0.15) { q.lx = s.x; q.ly = s.y; }
     }
-    // تدافع لطيف بين الشخصيات
+    // تدافع لطيف بين اللاعبين
     for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
       const a = pl[list[i].index], b = pl[list[j].index]; if (!a || !b) continue; const dx = (b.x - a.x) * aw, dy = (b.y - a.y) * ah, d = Math.hypot(dx, dy), r = Math.min(aw, ah) * 0.09;
       if (d > 0 && d < r) { const f = (r - d) / d * 0.5; a.x -= dx * f / aw; a.y -= dy * f / ah; b.x += dx * f / aw; b.y += dy * f / ah; }
@@ -87,7 +93,7 @@ defineGame({
       st.t += dt; if (!st.on) continue;
       for (const p of list) {
         const q = pl[p.index]; if (!q || !p.connected) continue;
-        const dx = (q.x - st.x) * aw, dy = (q.y - st.y) * ah, R = Math.min(aw, ah) * (st.big ? 0.085 : 0.07);
+        const dx = (q.x - st.x) * aw, dy = (q.y - st.y) * ah, R = Math.min(aw, ah) * (st.big ? 0.085 : 0.07) * GRAB;
         if (dx * dx + dy * dy < R * R) {
           const v = st.big ? 3 : 1, sx = A.x0 + st.x * aw, sy = A.y0 + st.y * ah; q.score += v; q.mood = 'cheer'; q.moodT = 0.6;
           ui.pop(v, sx, sy - 20, p.color); burst(sx, sy, st.big ? 24 : 12, st.big ? 2 : 0); api.audio.beep(st.big ? 1320 : 880 + (q.score % 5) * 80, 60, 0.18); api.pads.vibrate(p.index, st.big ? 80 : 25);
@@ -114,22 +120,22 @@ defineGame({
       for (const p of list) { const q = pl[p.index]; if (!q) continue; const x = A.x0 + q.x * aw, y = A.y0 + q.y * ah, tm = api.teams.of(p.index);
         c.globalAlpha = p.connected ? 1 : 0.35;
         if (tm >= 0) { c.strokeStyle = api.teams.colors[tm]; c.lineWidth = 4; c.beginPath(); c.ellipse(x, y + ms * 0.46, ms * 0.42, ms * 0.12, 0, 0, 6.283); c.stroke(); }
-        if (q.dash > 0) { c.globalAlpha = 0.3; ui.mascot(c, p.character, x - q.vx * aw * 0.06, y - q.vy * ah * 0.06, ms, { mood: 'wow' }); c.globalAlpha = 1; }
-        ui.mascot(c, p.character, x, y, ms, { mood: !p.connected ? 'sad' : q.moodT > 0 ? q.mood : q.dash > 0 ? 'wow' : 'happy', look: { x: q.lx, y: q.ly } });
+        if (q.dash > 0) { c.globalAlpha = 0.3; tok(c, p.colorIndex, x - q.vx * aw * 0.06, y - q.vy * ah * 0.06, ms, 'wow'); c.globalAlpha = 1; }
+        tok(c, p.colorIndex, x, y, ms, !p.connected ? 'sad' : q.moodT > 0 ? q.mood : q.dash > 0 ? 'wow' : 'happy');
         ui.text(c, p.name, x, y - ms * 0.78, Math.max(14, ms * 0.24), th.fg, true); c.globalAlpha = 1; }
     }
     for (let i = 0; i < NP; i++) { const o = i * 6; if (P[o + 4] <= 0) continue; c.globalAlpha = Math.min(1, P[o + 4] * 2); c.fillStyle = COL[P[o + 5] | 0]; c.fillRect(P[o] - 3, P[o + 1] - 3, 6, 6); } c.globalAlpha = 1;
     // لوحة النقاط أعلى الساحة
     const top = ui.safe.top + 6;
     if (teamOn()) { for (let tm = 0; tm < 2; tm++) { const bw = Math.min(260, w * 0.3), x = tm ? w / 2 - bw - 12 : w / 2 + 12; c.fillStyle = api.teams.colors[tm]; c.globalAlpha = 0.9; c.beginPath(); c.roundRect(x, top, bw, 44, 22); c.fill(); c.globalAlpha = 1; ui.text(c, api.teams.names[tm] + '  ' + ui.num(teamScore(tm)), x + bw / 2, top + 22, 20, th.bg, true); } }
-    else if (state !== 'ready') { const n = list.length, cw = Math.min(190, (w - 40) / Math.max(1, n)); list.forEach((p, k) => { const q = pl[p.index]; ui.playerChip(c, p.character, w / 2 + (k - (n - 1) / 2) * cw, top + 22, { label: p.name, score: q ? q.score : 0, size: 40 }); }); }
+    else if (state !== 'ready') { const n = list.length, cw = Math.min(190, (w - 40) / Math.max(1, n)); list.forEach((p, k) => { const q = pl[p.index]; ui.playerChip(c, p.colorIndex, w / 2 + (k - (n - 1) / 2) * cw, top + 22, { label: p.name, score: q ? q.score : 0, size: 40 }); }); }
     if (state === 'play') ui.progress(c, left / ROUND, { y: A.y1 + 14, h: 8 });
     if (state === 'ready') {
-      ui.background(c, 0.55); ui.bigText(c, 'صيد النجوم', { y: h * 0.2 }); ui.text(c, 'حرّك شخصيتك بالعصا واجمع النجوم. الزرّ = اندفاعة.', w / 2, h * 0.29, Math.max(16, Math.min(26, w * 0.02)), th.mut);
+      ui.background(c, 0.55); ui.bigText(c, 'صيد النجوم', { y: h * 0.2 }); ui.text(c, 'حرّك شكلك بالعصا واجمع النجوم. الزرّ = اندفاعة.', w / 2, h * 0.29, Math.max(16, Math.min(26, w * 0.02)), th.mut);
       const n = Math.max(1, list.length), sz = Math.min(150, w * 0.8 / n), y = h * 0.55;
       list.forEach((p, k) => { const q = pl[p.index], x = w / 2 + (k - (n - 1) / 2) * sz * 1.15, rd = q && q.ready;
         c.globalAlpha = p.connected ? 1 : 0.35;
-        ui.mascot(c, p.character, x, y, sz * 0.8, { mood: !p.connected ? 'sad' : rd ? 'cheer' : 'happy', look: { x: 0, y: 0.3 } }); ui.text(c, p.name, x, y + sz * 0.62, Math.max(15, sz * 0.15), th.fg, true);
+        tok(c, p.colorIndex, x, y, sz * 0.8, !p.connected ? 'sad' : rd ? 'cheer' : 'happy'); ui.text(c, p.name, x, y + sz * 0.62, Math.max(15, sz * 0.15), th.fg, true);
         ui.text(c, !p.connected ? 'انقطع' : rd ? '✓ جاهز' : 'اضغط «جاهز»', x, y + sz * 0.82, Math.max(13, sz * 0.12), rd ? th.ok : th.mut, rd);
         c.globalAlpha = 1; });
       if (!list.length) ui.text(c, 'بانتظار الجوالات…', w / 2, h * 0.55, 24, th.mut);

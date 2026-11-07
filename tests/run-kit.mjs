@@ -21,6 +21,10 @@ try {
   ok('check-game.mjs knows exactly the real api.ui keys (no drift)', r && JSON.stringify([...KIT].sort()) === JSON.stringify(r.keys), { checker: [...KIT].sort(), real: r && r.keys });
   const chk = f => spawnSync('node', ['tools/check-game.mjs', f], { cwd: new URL('..', import.meta.url).pathname, encoding: 'utf8' });
   ok('check-game.mjs: kit games pass with no false errors, a misspelled ui.* helper is an error', ['games/color-hunt.js', 'games/multi-lane.js', 'tests/games/kit-demo.js', 'tests/games/kit-probe.js', 'tests/games/kit-example.js'].every(f => chk(f).status === 0) && chk('tests/games/kit-typo.js').status === 1, null);
+  { // 0.5.2: الشخصيات أُزيلت من العُدّة؛ لعبة قديمة تستدعيها يرفضها المحقّق باسم الدالة (الاسم مبنيّ هنا كي لا يبقى في المستودع)
+    const { writeFileSync, mkdtempSync } = await import('node:fs'), { tmpdir } = await import('node:os'), old = 'mas' + 'cot', f = mkdtempSync(tmpdir() + '/kit-') + '/old.js';
+    writeFileSync(f, "// @title old\n// @engine 0.5\n// @capabilities hud\nlet ui; defineGame({ init(a) { ui = a.ui; }, update() {}, render(c) { ui.background(c); ui." + old + "(c, 0, 50, 50, 40, {}); ui.draw(c); } });\n");
+    const o = chk(f); ok('check-game.mjs: the removed character helper (ui.' + old + ') is an unknown-name error', o.status !== 0 && o.stdout.includes('ui.' + old), o.stdout.slice(0, 300)); }
   const hb = await c.ev(`(()=>{const h=__engine.events.filter(e=>e.n==='hb').map(e=>e.d); const s=__engine.state(); return {hb:h, viol:s?s.viol:'(ended)', errs:Draw.stats().errs, ev:__engine.events.filter(e=>/violation|error|cmd-overflow|over-budget|slow/.test(e.n)).map(e=>e.n+':'+JSON.stringify(e.d)).slice(0,5)}})()`);
   const worst = Math.max(0, ...hb.hb.map(h => h.max)), avg = hb.hb.length ? hb.hb.reduce((a, h) => a + h.avg, 0) / hb.hb.length : 99, cmds = Math.max(0, ...hb.hb.map(h => h.cmds)), over = hb.hb.reduce((a, h) => a + h.over, 0);
   ok('all helpers drawn every frame: no violations, no draw errors, no cmd overflow', hb.errs === 0 && !hb.ev.length && hb.hb.length > 0, hb);
@@ -50,7 +54,7 @@ try {
   const hw = await howRun();
   ok('howto: first countdown plays the explainer (≈3.5s) and onDone fires once at «انطلق!»', hw.r && hw.r.n1 === 1 && hw.r.d1 > 3.3 && hw.r.d1 < 3.9 && hw.r.mid === true, hw.r);
   ok('howto: the next countdown in the same run is the plain 3-2-1 (≈2.1s), onDone once', hw.r && hw.r.n2 === 1 && hw.r.d2 > 1.9 && hw.r.d2 < 2.5, hw.r);
-  ok('howto: explainer is actually drawn (mascots + card: ≥150 commands/frame) with no violations, draw errors or overflow, within 3000', hw.peak >= 150 && hw.peak < 3000 && hw.errs.viol === 0 && hw.errs.draw === 0 && !hw.errs.ev.length, { peak: hw.peak, ...hw.errs });
+  ok('howto: explainer is actually drawn (player shapes + hands + card: ≥100 commands/frame) with no violations, draw errors or overflow, within 3000', hw.peak >= 100 && hw.peak < 3000 && hw.errs.viol === 0 && hw.errs.draw === 0 && !hw.errs.ev.length, { peak: hw.peak, ...hw.errs });
   ok('settings panel has «شرح قصير قبل كل لعبة», on by default', await c.ev(`(()=>{const e=document.getElementById('howto'); return !!e && e.checked && /شرح قصير قبل كل لعبة/.test(e.parentElement.textContent)})()`));
   await c.ev(`(()=>{const e=document.getElementById('howto'); e.checked=false; e.dispatchEvent(new Event('change'))})()`);
   const hw0 = await howRun();

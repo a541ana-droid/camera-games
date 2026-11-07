@@ -14,7 +14,8 @@ const FORBID = [[/\bfetch\s*\(/, 'fetch'], [/XMLHttpRequest/, 'XMLHttpRequest'],
 const WARN = [[/while\s*\(\s*(true|1)\s*\)|for\s*\(\s*;\s*;\s*\)/, 'حلقة قد لا تنتهي — الحارس سيغلق اللعبة'], [/setInterval\s*\(/, 'setInterval — استعمل update(dt)'], [/requestAnimationFrame/, 'requestAnimationFrame — المحرك يملك الحلقة'], [/<script|innerHTML/, 'DOM — لا حاجة له: ارسم على ctx']];
 const CAPMAP = [[/api\.view\.showCamera/, 'camera.view'], [/api\.track\.color\b/, 'camera.color'], [/api\.track\.motion\b/, 'camera.motion'], [/api\.track\.lanes\b/, 'camera.lanes'], [/api\.track\.colorPerPlayer\b/, 'camera.playercolors'], [/api\.camera\.lowres/, 'camera.lowres'], [/api\.calibrate\./, 'camera.calibrate'], [/api\.audio\./, 'audio'], [/api\.haptic/, 'haptic'], [/api\.hud\./, 'hud'], [/api\.players\.local/, 'players.local'], [/api\.sensors\.motion/, 'motion.device'], [/api\.mic\./, 'audio.mic'], [/api\.pads\./, 'players.pads']];
 // عُدّة الواجهة api.ui (runtime.js): القائمة تُطابَق في tests/run-kit.mjs بمفاتيح الكائن الفعلي فلا تتأخر عنه
-const KIT = ['theme', 'safe', 'num', 'hit', 'row', 'background', 'text', 'title', 'bigText', 'meter', 'progress', 'shape', 'playerChip', 'button', 'results', 'countdown', 'pop', 'flash', 'cancel', 'draw', 'still', 'counting', 't', 'unit', 'mascot'];
+const KIT = ['theme', 'safe', 'num', 'hit', 'row', 'background', 'text', 'title', 'bigText', 'meter', 'progress', 'shape', 'playerChip', 'button', 'results', 'countdown', 'pop', 'flash', 'cancel', 'draw', 'still', 'counting', 't', 'unit'];
+const PREFS = ['roundScale', 'difficulty', 'reducedMotion', 'textScale']; // = مفاتيح api.prefs في runtime.js
 const PLANMAP = [[/api\.qr\b/, 'qr.show'], [/api\.players\.network/, 'players.network'], [/api\.hand\b/, 'hand'], [/api\.pose\b/, 'pose']];
 const HOWACTS = ['wave', 'wave-lane', 'freeze', 'show-color', 'tilt', 'hand-zone', 'block', 'dodge', 'pop', 'push-up', 'joystick', 'tap-beat', 'react', 'tap', 'voice', 'simon']; // = ACTS في runtime.js (يتحقق run-kit من التطابق)
 let bad = 0;
@@ -41,7 +42,11 @@ for (const file of process.argv.slice(2)) {
   for (const [re, name] of PLANMAP) if (re.test(code)) errs.push('api.' + name + ' غير متاحة بعد في v0');
   // العُدّة: لا قدرة تلزمها. الاسم المستعار (ui = api.ui) يُتتبَّع كي يُكشف خطأ إملائي في اسم الدالة قبل التشغيل.
   const alias = new Set(['api.ui']); for (const m of code.matchAll(/\b(?:const|let|var)\s+(\w+)\s*=\s*(?:api|a)\.ui\b|\b(\w+)\s*=\s*(?:api|a)\.ui\b/g)) alias.add(m[1] || m[2]);
-  for (const al of alias) for (const m of code.matchAll(new RegExp('(?<![\\w.])' + al.replace('.', '\\.') + '\\.(\\w+)', 'g'))) if (!KIT.includes(m[1])) errs.push('«' + al + '.' + m[1] + '» غير موجودة في عُدّة الواجهة (المتاح: ' + KIT.join(' ') + ')');
+  for (const al of alias) for (const m of code.matchAll(new RegExp('(?<![\\w.])' + al.replace('.', '\\.') + '\\.(\\w+)', 'g'))) if (!KIT.includes(m[1])) errs.push('«' + al + '.' + m[1] + '» غير موجودة في عُدّة الواجهة' + ' (المتاح: ' + KIT.join(' ') + ')');
+  // api.prefs (0.5.2): أربعة أرقام للقراءة فقط يضبطها الوالد من الإعدادات
+  for (const m of code.matchAll(/\b(?:api|a)\.prefs\.(\w+)/g)) if (!PREFS.includes(m[1])) errs.push('«api.prefs.' + m[1] + '» غير موجودة (المتاح: ' + PREFS.join(' ') + ')');
+  if (/\b(?:api|a)\.prefs(?:\.\w+)?\s*=(?!=)/.test(code)) errs.push('api.prefs للقراءة فقط: لا تغيّرها (يضبطها الوالد من الإعدادات)');
+  if (/\bROUND\w*\s*=\s*\d/.test(code) && !/\bprefs\b/.test(code)) warns.push('للعبة مدة جولة ولا تقرأ api.prefs.roundScale: اضربها فيه كي يعمل إعداد «مدة الجولة» (ENGINE.md §3.5)');
   const usesUi = /\b(?:api|a)\.ui\b/.test(code);
   if (!usesUi && /\bdefineGame\b/.test(code) && /\brender\b/.test(code)) warns.push('لا تستعمل api.ui: شاشات البداية والعدّ التنازلي والمقاييس تأتي جاهزة بهوية المحرك (ENGINE.md §3.3)');
   if (!usesUi && (code.match(/#[0-9a-fA-F]{6}\b/g) || []).length > 6) warns.push('ألوان مكتوبة يدويًا كثيرة: استعمل api.ui.theme (DESIGN.md §2)');

@@ -22,7 +22,7 @@ defineGame({
   render(c, w, h) {
     ui.background(c); const L = api.pads.list, sz = Math.min(160, w * 0.8 / Math.max(1, L.length));
     L.forEach((p, k) => { const x = w / 2 + (k - (L.length - 1) / 2) * sz * 1.2, y = h * 0.5;
-      c.globalAlpha = p.connected ? 1 : 0.35; ui.mascot(c, p.character, x, y, sz * 0.8, { mood: (n[p.index] || 0) >= 10 ? 'cheer' : 'happy' });
+      c.globalAlpha = p.connected ? 1 : 0.35; ui.shape(c, p.colorIndex, x, y, sz * ((n[p.index] || 0) >= 10 ? 0.4 : 0.32)); // اللاعب = لونه وشكله
       ui.text(c, p.name + '  ' + ui.num(n[p.index] || 0), x, y + sz * 0.65, Math.max(16, sz * 0.14), ui.theme.fg, true); c.globalAlpha = 1; });
     ui.draw(c);
   }

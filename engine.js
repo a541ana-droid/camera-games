@@ -1,13 +1,14 @@
 'use strict';
 // المضيف: يملك الكاميرا والصوت والحلقة والحارس والرسم. كود اللعبة يعمل في Web Worker قابل للإنهاء (terminate) ولا يعمل أي سطر منه في هذا الخيط. لا ثقة بشيء قادم منه.
 (() => {
-  const VERSION = '0.5.1', MAJOR = 0, BUDGET_MS = 8, HB_TIMEOUT = 2000, BOOT_TIMEOUT = 4000, ALIVE_TIMEOUT = 2500, MAX_GAME_BYTES = 200000;
+  const VERSION = '0.5.2', MAJOR = 0, BUDGET_MS = 8, HB_TIMEOUT = 2000, BOOT_TIMEOUT = 4000, ALIVE_TIMEOUT = 2500, MAX_GAME_BYTES = 200000;
   const KNOWN = ['camera.view', 'camera.color', 'camera.motion', 'camera.lowres', 'camera.calibrate', 'audio', 'haptic', 'hud', 'players.local', 'camera.lanes', 'camera.playercolors', 'audio.mic', 'motion.device', 'players.pads'];
   const PLANNED = ['qr', 'players.network', 'hand', 'pose'];
   const MAX_MSG_PER_S = 400, MAX_BYTES = new URLSearchParams(location.search).get('debug') === '1' ? 8192 : 2048, MAX_TRACKS = 4, MEM_LIMIT = 192e6;
   const memDetail = v => 'طلبت نحو ' + Math.round(n(v, 0, 1e12, 0) / 1e6) + ' ميغابايت.';
   const RATE = { 'mic.start': 5, 'audio.tone': 30, 'audio.melody': 10, haptic: 10, hud: 30, 'pads.say': 20, 'pads.vib': 20, 'pads.ctl': 10 };
   const $ = id => document.getElementById(id);
+  const vq = u => u + (u.includes('?') ? '&' : '?') + 'v=' + VERSION.replace(/\./g, ''); // ملفات يجلبها المحرك بنفسه تحمل رقم نسخته (كما في index.html) فلا يخدمها مخزن HTTP من نسخة أخرى؛ عامل الخدمة يتجاهل الاستعلام
   const qs = new URLSearchParams(location.search), DEBUG = qs.get('debug') === '1', ENDMAX = DEBUG ? 4000 : 300; // نص نهاية اللعبة: 300 حرفًا (4000 في ?debug=1 كي تحمل الاختبارات نتائجها)
   const DEBUG_NOSW = new URLSearchParams(location.search).get('nosw') === '1';
   const stage = $('stage'), menu = $('menu'), cam = $('cam'), cvs = $('cv'), MODE = qs.get('mode') || 'auto'; // auto | iframe | host
@@ -58,10 +59,12 @@
     const c = L < 0.12 ? BRAND : a; return { c, hi: mix(c, [255, 255, 255], 0.25), lo: mix(c, [0, 0, 0], 0.45) };
   }
   const CAPI = [['players.pads', '🎮', 'بالجوالات'], ['camera.', '📷', 'كاميرا'], ['audio.mic', '🎤', 'ميكروفون'], ['motion.device', '📱', 'حركة الجوال'], ['players.local', '👥', 'لاعبون'], ['camera.lanes', '👥', 'لاعبون']];
+  // أيقونة الغلاف المولَّد (لعبة بلا غلاف): فعل اللعبة من @howto-act، لا وجوه ولا شخصيات
+  const ACTICON = { wave: '👋', 'wave-lane': '🏁', freeze: '🧊', 'show-color': '🎨', tilt: '📲', 'hand-zone': '🎯', block: '🧤', dodge: '☄️', pop: '🫧', 'push-up': '🎈', simon: '👑', joystick: '🕹️', 'tap-beat': '🥁', react: '⚡', tap: '👆', voice: '🎤' };
   const capIcons = caps => { const out = []; for (const [k, i, n] of CAPI) if (caps.some(c => c.startsWith(k)) && !out.some(o => o[0] === i)) out.push([i, n]); return out; };
 
   // ---------- العرض ----------
-  function show(which) { for (const v of ['menu', 'stage', 'ser', 'tv', 'pad']) { const el = $(v); if (el) el.hidden = which !== v; } }
+  function show(which) { for (const v of ['menu', 'stage', 'ser', 'tv', 'pad']) { const el = $(v); if (el) el.hidden = which !== v; } if (which !== 'menu') closeSettings(); Upd.view(); }
   const SER = () => window.Series && Series.active(); // سلسلة ألعاب جارية؟ (المنطق كله في series.js)
   const PADS = () => window.Pads && Pads.playing(); // لعبة جوالات من ردهة التلفاز جارية؟ (tv.js)
   function overlay(text, opts = {}) {
@@ -75,10 +78,28 @@
     }
   }
 
+  // ---------- إعدادات الأسرة (0.5.2، ENGINE.md §3.5) ----------
+  // يقرؤها المضيف وحده ويطبّقها بنفسه (الصوت، الاهتزاز، حساسية الكاميرا، الوميض، حجم النص). اللعبة لا تكسب قدرة: تصلها نسخة مجمّدة للقراءة فقط في api.prefs.
+  const PREFS_KEY = 'engine-prefs', RSCALE = [0.6, 1, 1.5], SENS = [1.5, 1, 0.65], TEXTK = 1.2; // SENS: مضاعف عتبة الحركة (منخفضة ⇒ عتبة أعلى)
+  const sysCalm = () => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } };
+  const pick3 = v => (v === 0 || v === 1 || v === 2) ? v : 1;
+  function loadPrefs() {
+    let o = null; try { o = JSON.parse(localStorage.getItem(PREFS_KEY) || 'null'); } catch (e) { /* */ } if (!o || typeof o !== 'object') o = {};
+    return { sound: o.sound !== false, vol: typeof o.vol === 'number' && isFinite(o.vol) ? Math.min(1, Math.max(0, o.vol)) : 1, haptic: o.haptic !== false, round: pick3(o.round), diff: pick3(o.diff), sens: pick3(o.sens), calm: typeof o.calm === 'boolean' ? o.calm : null, big: o.big === true };
+  }
+  let PR = loadPrefs();
+  const calmOn = () => PR.calm === null ? sysCalm() : PR.calm;
+  const soundOn = () => PR.sound && PR.vol > 0;
+  function applyPrefs() { const r = document.documentElement; r.classList.toggle('calm', calmOn()); r.classList.toggle('big', PR.big); if (typeof Analyzer !== 'undefined') Analyzer.setSensitivity(SENS[PR.sens]); }
+  function setPref(k, v) { PR[k] = v; PR = Object.assign(loadPrefs(), PR); try { localStorage.setItem(PREFS_KEY, JSON.stringify(PR)); } catch (e) { /* */ } applyPrefs(); ev('prefs', JSON.stringify(PR)); }
+  const gamePrefs = () => ({ roundScale: RSCALE[PR.round], difficulty: PR.diff, reducedMotion: calmOn(), textScale: PR.big ? TEXTK : 1 }); // ما يصل اللعبة (أرقام فقط)
+  applyPrefs();
+
   // ---------- الصوت (WebAudio) ----------
   function audioCtx() { if (!actx) { const C = window.AudioContext || window.webkitAudioContext; if (C) actx = new C(); } if (actx && actx.state === 'suspended') actx.resume().catch(() => {}); return actx; }
   function tone(f, ms, vol, type, slide, at) {
-    const a = audioCtx(); if (!a || !S) return; if (S.voices >= 8) return; S.voices++;
+    if (!soundOn() || !S) return; vol *= PR.vol; // الصوت مطفأ أو صفر ⇒ لا مذبذب ولا سياق صوت أصلًا
+    const a = audioCtx(); if (!a) return; if (S.voices >= 8) return; S.voices++;
     const o = a.createOscillator(), g = a.createGain(), t = (at || a.currentTime), d = ms / 1000;
     o.type = ['sine', 'square', 'triangle', 'sawtooth'].includes(type) ? type : 'sine'; o.frequency.setValueAtTime(f, t);
     if (slide) o.frequency.linearRampToValueAtTime(Math.min(8000, Math.max(40, f + slide)), t + d);
@@ -244,16 +265,16 @@
       case 'mic.stop': S.micWant = 0; clearInterval(S.micT); S.micT = 0; Mic.close(); break;
       case 'view.camera': if (!cap('camera.view')) return; showCam(!!m.on); break;
       case 'audio.tone': if (!cap('audio')) return; tone(n(m.f, 40, 8000, 440), n(m.ms, 10, 2000, 150), n(m.vol, 0, 0.5, 0.3), m.type, n(m.slide, -4000, 4000, 0)); break;
-      case 'audio.melody': { if (!cap('audio')) return; if (!Array.isArray(m.notes)) return violate('melody'); const a = audioCtx(); let at = a ? a.currentTime : 0;
+      case 'audio.melody': { if (!cap('audio')) return; if (!Array.isArray(m.notes)) return violate('melody'); if (!soundOn()) break; const a = audioCtx(); let at = a ? a.currentTime : 0;
         for (const x of m.notes.slice(0, 16)) { const ms = n(x && x.ms, 10, 1000, 150); tone(n(x && x.f, 40, 8000, 440), ms, 0.25, 'triangle', 0, at); at += ms / 1000; } break; }
       case 'hud': if (!cap('hud')) return; hud({ score: m.score == null ? undefined : String(m.score).slice(0, 24), time: m.time == null ? undefined : String(m.time).slice(0, 12), title: m.title == null ? undefined : String(m.title).slice(0, 40) }); break;
-      case 'haptic': if (!cap('haptic')) return; if (navigator.vibrate) navigator.vibrate(n(m.ms, 1, 200, 30)); break;
+      case 'haptic': if (!cap('haptic')) return; if (PR.haptic && navigator.vibrate) navigator.vibrate(n(m.ms, 1, 200, 30)); break;
       case 'pads.say': case 'pads.vib': case 'pads.ctl': { if (!cap('players.pads')) return; const i = n(m.i, -1, 7, -2); if (i === -2 || (i | 0) !== i) return violate('pad-index'); if (!window.Pads) return;
-        if (m.t === 'pads.say') Pads.say(i, String(m.text == null ? '' : m.text).slice(0, 60)); else if (m.t === 'pads.vib') Pads.vibrate(i, n(m.ms, 1, 300, 40)); else Pads.controls(i, { stick: m.stick !== false, a: String(m.a == null ? '' : m.a).slice(0, 12), b: String(m.b == null ? '' : m.b).slice(0, 12), tilt: !!m.tilt }); break; }
+        if (m.t === 'pads.say') Pads.say(i, String(m.text == null ? '' : m.text).slice(0, 60)); else if (m.t === 'pads.vib') { if (PR.haptic) Pads.vibrate(i, n(m.ms, 1, 300, 40)); } else Pads.controls(i, { stick: m.stick !== false, a: String(m.a == null ? '' : m.a).slice(0, 12), b: String(m.b == null ? '' : m.b).slice(0, 12), tilt: !!m.tilt }); break; }
       case 'end': ev('end', { score: n(m.score, -1e9, 1e9, 0), text: String(m.text || '').slice(0, ENDMAX), scores: m.scores, ranks: m.ranks, teamScores: m.teamScores });
         { const sc = n(m.score, -1e9, 1e9, 0), tx = String(m.text || '').slice(0, 300), src = S.src, ttl = S.head && S.head.title || '', pads = S.pads && PADS(); stopGame('end', false);
           if (SER()) { Series.result(m); break; }
-          if (pads) { Pads.ended(m); break; } // ردهة التلفاز تعرض النتيجة بالشخصيات وتبلغ كل جوال
+          if (pads) { Pads.ended(m); break; } // ردهة التلفاز تعرض النتيجة بألوان اللاعبين وأشكالهم وتبلغ كل جوال
           const ts = teamLine(m.teamScores); overlay((tx ? tx + '\n' : '') + (ts || 'النتيجة: ' + arn(sc)), { again: () => startGame(src), end: true, title: ttl }); } break;
       case 'err':
         // فشل تحميل كود اللعبة نفسه بسبب الشبكة/الأمان (لا خطأ في كود اللعبة) داخل iframe ⇒ جرّب Worker مباشرًا من المضيف مرة واحدة
@@ -265,11 +286,10 @@
   }
 
   // ---------- دورة الحياة ----------
-  // runtime.js يسبقه mascot.js (رسم الشخصيات لـui.mascot؛ يلتقطه runtime ويحذفه من النطاق العام قبل كود اللعبة)
-  async function loadRuntime() { if (!runtimeSrc) { const [m, r] = await Promise.all(['mascot.js', 'runtime.js'].map(f => fetch(f).then(x => { if (!x.ok) throw new Error('تعذّر تحميل ' + f); return x.text(); }))); runtimeSrc = m + '\n' + r; } return runtimeSrc; }
+  async function loadRuntime() { if (!runtimeSrc) { const r = await fetch(vq('runtime.js')); if (!r.ok) throw new Error('تعذّر تحميل runtime.js'); runtimeSrc = await r.text(); } return runtimeSrc; }
   async function getText(src) {
     if (typeof src !== 'string') return src.text;
-    const r = await fetch(src); if (!r.ok) throw new Error('تعذّر تحميل ' + src); const t = await r.text(); return t;
+    const r = await fetch(vq(src)); if (!r.ok) throw new Error('تعذّر تحميل ' + src); const t = await r.text(); return t;
   }
   // أصول الصور (// @assets اسم=مسار.png): من مجلدات اللعبة نفسها فقط، ≤8 ملفات و≤512KB لكل منها، تُفكّ في المضيف وتصل اللعبة مقبضًا {id,w,h}
   async function loadAssets(head, src) {
@@ -287,7 +307,7 @@
   const LAUNCHER_HASH = 'sha256-kWk1SupbNVOkZQkpxg0qyy1daQSU6A19cie5HQ2d1zY=';
   const launcherDoc = js => '<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'' + LAUNCHER_HASH + '\' blob:; worker-src blob:; connect-src \'none\'; form-action \'none\'; base-uri \'none\'"><script>' + js + '<\/script>';
   let launcherSrc = null;
-  async function loadLauncher() { if (launcherSrc === null) launcherSrc = await (await fetch('launcher.js')).text(); return launcherSrc; }
+  async function loadLauncher() { if (launcherSrc === null) launcherSrc = await (await fetch(vq('launcher.js'))).text(); return launcherSrc; }
   function launch(s, mode) {
     const ch = new MessageChannel(); if (s.port) try { s.port.onmessage = null; s.port.close(); } catch (e) { /* */ }
     s.port = ch.port1; s.mode = mode; s.alive = false; s.t0 = s.tLaunch = performance.now(); s.ready = false; s.inflight = false; s.loads = 0;
@@ -351,10 +371,10 @@
         inflight: false, tickAt: 0, pq: [], sw: 0, sh: 0, frames: 0, cmdN: 0, win: { n: 0, sum: 0, max: 0, over: 0, t: performance.now() }, wdLast: performance.now(),
         hz: 30, pm: pmNew(performance.now()), tStart: performance.now(), perf: { n: 0, busy: 0, fps: 0, wk: 0, maxBusy: 0, best: 0, downs: 0, calm: 0, hzT: {} }, pads: head.caps.includes('players.pads') && !!window.Pads };
       if (head.caps.some(c => c.startsWith('camera.'))) { overlay('جارٍ فتح الكاميرا…', {}); $('ovA').hidden = true; await openCamera(); if (!S || S.id !== id) return closeCameraIfIdle(); }
-      if (S.caps.has('audio')) audioCtx();
+      if (S.caps.has('audio') && soundOn()) audioCtx();
       const rt = await loadRuntime(); await loadLauncher(); if (!S || S.id !== id) return;
       S.assetInfo = await loadAssets(head, src); if (!S || S.id !== id) return;
-      const spec = { accent: head.accent ? accentOf(head).c : '', howto: howPref() && head.howto ? { text: head.howto.slice(0, 60), act: String(head['howto-act'] || '').slice(0, 20) } : null, memmax: MEM_LIMIT, players: SER() ? Series.names() : null, teams: teamSpec(head), pads: head.caps.includes('players.pads') && window.Pads ? Pads.snapshot() : null, endmax: ENDMAX, nogate: DEBUG && qs.get('nogate') === '1', version: VERSION, maxe: Draw.MAXE, cmds: Draw.spec(), defaults: Draw.DEFAULTS, mt: Draw.measureTables() };
+      applyPrefs(); const spec = { prefs: gamePrefs(), accent: head.accent ? accentOf(head).c : '', howto: howPref() && head.howto ? { text: head.howto.slice(0, 60), act: String(head['howto-act'] || '').slice(0, 20) } : null, memmax: MEM_LIMIT, players: SER() ? Series.names() : null, teams: teamSpec(head), pads: head.caps.includes('players.pads') && window.Pads ? Pads.snapshot() : null, endmax: ENDMAX, nogate: DEBUG && qs.get('nogate') === '1', version: VERSION, maxe: Draw.MAXE, cmds: Draw.spec(), defaults: Draw.DEFAULTS, mt: Draw.measureTables() };
       S.wsrc = 'self.__SPEC=' + JSON.stringify(spec) + ';\n' + rt; S.gsrc = ';(function(){\n' + text + '\n})();';
       showCam(false); $('ov').hidden = true;
       S.sw = stage.clientWidth; S.sh = stage.clientHeight; Draw.resize(S.sw, S.sh, window.devicePixelRatio);
@@ -411,17 +431,18 @@
     if (DEBUG) $('synthL').hidden = false;
     $('camview').checked = camPref(); $('camview').onchange = e => { setCamPref(e.target.checked); if (!e.target.checked) showCam(false); };
     $('howto').checked = howPref(); $('howto').onchange = e => setHowPref(e.target.checked);
+    settingsUi();
     const list = $('list'); list.textContent = '';
     if (crashed) { const w = document.createElement('p'); w.className = 'warn'; w.textContent = 'أُعيد تحميل الصفحة أثناء لعبة «' + crashed.t + '» — غالبًا استهلكت ذاكرة الجهاز. لم تُشغَّل تلقائيًا؛ اخترها من جديد إن أردت.'; list.before(w); diag('crash-recovered', crashed.t); }
     try {
-      const names = (await (await fetch('games/index.txt')).text()).split('\n').map(s => s.trim()).filter(s => /^[\w.-]+\.js$/.test(s) && (DEBUG || !s.startsWith('zz-'))); // zz-* ألعاب اختبار للمطوّر: تظهر في ?debug=1 فقط
+      const names = (await (await fetch(vq('games/index.txt'))).text()).split('\n').map(s => s.trim()).filter(s => /^[\w.-]+\.js$/.test(s) && (DEBUG || !s.startsWith('zz-'))); // zz-* ألعاب اختبار للمطوّر: تظهر في ?debug=1 فقط
       // تُجلب رؤوس الألعاب معًا لا واحدة بعد الأخرى (على شبكة بطيئة كانت 6 ألعاب × ~3ث قبل ظهور القائمة)؛ لعبة تعذّر جلبها تُتخطّى ولا تُسقط القائمة كلها
-      const texts = await Promise.all(names.map(nm => fetch('games/' + nm).then(r => r.ok ? r.text() : null, () => null)));
+      const texts = await Promise.all(names.map(nm => fetch(vq('games/' + nm)).then(r => r.ok ? r.text() : null, () => null)));
       for (let gi = 0; gi < names.length; gi++) {
         const nm = names[gi]; if (texts[gi] == null) continue;
         const h = parseHeader(texts[gi]), b = document.createElement('button'), ac = accentOf(h), mk = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt) e.textContent = txt; return e; };
         b.className = 'card'; b.style.setProperty('--ac', ac.c); b.style.setProperty('--ac-hi', ac.hi); b.style.setProperty('--ac-lo', ac.lo);
-        const cover = mk('span', 'cover'), ic = capIcons(h.caps), art = mk('span', 'art', ic.length ? ic[0][0] : '🎮'); art.setAttribute('aria-hidden', 'true');
+        const cover = mk('span', 'cover'), ic = capIcons(h.caps), art = mk('span', 'art', ACTICON[h['howto-act']] || (ic.length ? ic[0][0] : '🎮')); art.setAttribute('aria-hidden', 'true');
         const img = new Image(); img.alt = ''; img.decoding = 'async'; img.className = 'pic'; img.onload = () => cover.classList.add('has'); img.onerror = () => img.remove(); img.src = 'games/' + nm.replace(/\.js$/, '') + '.cover.jpg'; cover.append(art, img);
         const body = mk('span', 'body'), t = mk('b', '', h.title || nm), d = mk('small', '', h.desc), caps = mk('span', 'caps'), nt = mk('em'); nt.hidden = true;
         for (const [i, n] of ic) { const c = mk('span', 'cap', i); c.title = n; c.setAttribute('role', 'img'); c.setAttribute('aria-label', n); caps.append(c); }
@@ -431,11 +452,65 @@
     } catch (e) { list.textContent = 'تعذّر تحميل قائمة الألعاب'; }
     await Sensors.probe(); applyAvail(); $('synth').addEventListener('change', applyAvail);
     $('pick').onclick = () => $('file').click();
-    $('setBtn').onclick = () => { const o = $('settings').hidden; $('settings').hidden = !o; $('setBtn').setAttribute('aria-expanded', o); };
+    $('setBtn').onclick = () => openSettings();
     $('playBtn').onclick = () => { const c = cards.find(x => !x.b.disabled); list.scrollIntoView({ block: 'start' }); if (c) c.b.focus({ preventScroll: true }); };
     $('file').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if (f) { $('code').value = await f.text(); $('mkRun').click(); } };
     maker();
   }
+  // ---------- ورقة الإعدادات (0.5.2) ----------
+  let setReturn = null;
+  function openSettings() { const st = $('settings'); if (!st.hidden) return; st.hidden = false; $('setBtn').setAttribute('aria-expanded', 'true'); setReturn = document.activeElement; st.scrollTop = 0; $('setClose').focus({ preventScroll: true }); }
+  function closeSettings() { const st = $('settings'); if (!st || st.hidden) return; st.hidden = true; $('setBtn').setAttribute('aria-expanded', 'false'); if (setReturn && setReturn.focus) setReturn.focus({ preventScroll: true }); setReturn = null; }
+  function settingsUi() {
+    const st = $('settings'), vol = $('pVol'), volV = $('pVolV');
+    const paint = () => {
+      $('pSound').checked = PR.sound; vol.value = Math.round(PR.vol * 100); vol.disabled = !PR.sound; volV.textContent = Math.round(PR.vol * 100) + '%';
+      $('pHaptic').checked = PR.haptic; $('pCalm').checked = calmOn(); $('pBig').checked = PR.big;
+      for (const g of st.querySelectorAll('.seg')) for (const b of g.querySelectorAll('button')) { const on = +b.dataset.v === PR[g.dataset.p]; b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', on ? 'true' : 'false'); b.tabIndex = on ? 0 : -1; }
+    };
+    $('pSound').onchange = e => { setPref('sound', e.target.checked); if (e.target.checked && PR.vol === 0) setPref('vol', 0.5); paint(); };
+    vol.oninput = () => { volV.textContent = vol.value + '%'; }; vol.onchange = () => { setPref('vol', Math.min(1, Math.max(0, +vol.value / 100))); paint(); };
+    $('pHaptic').onchange = e => { setPref('haptic', e.target.checked); if (e.target.checked && navigator.vibrate) try { navigator.vibrate(40); } catch (x) { /* */ } };
+    $('pCalm').onchange = e => setPref('calm', e.target.checked); $('pBig').onchange = e => setPref('big', e.target.checked);
+    for (const g of st.querySelectorAll('.seg')) {
+      g.onclick = e => { const b = e.target.closest('button'); if (!b) return; setPref(g.dataset.p, pick3(+b.dataset.v)); paint(); };
+      g.onkeydown = e => { const k = { ArrowRight: -1, ArrowLeft: 1, ArrowUp: -1, ArrowDown: 1 }[e.key]; if (!k) return; e.preventDefault(); const v = Math.min(2, Math.max(0, PR[g.dataset.p] + k)); setPref(g.dataset.p, v); paint(); g.querySelector('[data-v="' + v + '"]').focus(); }; // اتجاه العربية: السهم الأيسر = التالي
+    }
+    $('aboutVer').textContent = VERSION; $('setClose').onclick = closeSettings;
+    st.onclick = e => { if (e.target === st) closeSettings(); };
+    st.onkeydown = e => { if (e.key === 'Escape') closeSettings(); };
+    $('pWipe').onclick = () => {
+      if (!confirm('تمسح «ألعابي» وإعداداتك وكل ما حفظه التطبيق على هذا الجهاز؟\nلا يمكن التراجع عن هذا.')) return;
+      wipeMine(); location.reload();
+    };
+    paint();
+  }
+  // «مسح بياناتي»: كل ما حفظه التطبيق في هذا المتصفح (ألعابي، الإعدادات، ملف الجوال ذراعًا، وأي سجلّ). يبقى فقط يوم عدّاد الزوّار كي لا يُعدّ الجهاز مرتين في اليوم نفسه.
+  function wipeMine() {
+    let day = null; try { day = localStorage.getItem('visitDay'); localStorage.clear(); if (day) localStorage.setItem('visitDay', day); } catch (e) { /* */ }
+    try { sessionStorage.clear(); } catch (e) { /* */ } PR = loadPrefs(); ev('wiped');
+  }
+  E.prefs = () => Object.assign({ effective: gamePrefs() }, PR); E.openSettings = () => openSettings(); E.wipeMine = wipeMine;
+
+  // ---------- إشعار النسخة الجديدة (0.5.2) ----------
+  // sw.js لا يتولّى الصفحات المفتوحة بنفسه: النسخة الجديدة تنتظر (waiting) والنسخة القديمة تخدم ملفاتها كاملة فلا تختلط ملفات نسختين.
+  // نعرض شريطًا في القائمة فقط؛ الضغط يطلب من العامل الجديد التولّي ثم نعيد التحميل. لا إعادة تحميل تلقائية أبدًا: لا أثناء لعبة ولا في ردهة التلفاز ولا في الجوال ذراعًا.
+  const Upd = (() => {
+    let reg = null, wait = null, asked = false, hidden = false, stale = false, lastCheck = 0;
+    const idle = () => !$('menu').hidden && !S && !SER() && !(window.Pads && Pads.active());
+    const view = () => { const b = $('upd'); if (!b) return; const on = !!wait && !hidden && idle(); b.hidden = !on; if (!$('menu').hidden && reg && performance.now() - lastCheck > 3e5) { lastCheck = performance.now(); reg.update().catch(() => {}); } };
+    const offer = w => { if (!w || !navigator.serviceWorker.controller) return; wait = w; ev('update-ready'); view(); };
+    function watch(r) {
+      reg = r; lastCheck = performance.now(); if (r.waiting) offer(r.waiting);
+      r.addEventListener('updatefound', () => { const w = r.installing; if (!w) return; w.addEventListener('statechange', () => { if (w.state === 'installed') offer(w); }); });
+      let had = !!navigator.serviceWorker.controller; // أول تولٍّ في أول زيارة (clients.claim) ليس تحديثًا: لا شريط
+      navigator.serviceWorker.addEventListener('controllerchange', () => { if (asked) return location.reload(); if (!had) { had = true; return; } stale = true; wait = wait || {}; view(); }); // ضغطة «تحديث» في تبويب آخر: هنا لا إعادة تحميل تلقائية، الشريط يظهر حين نعود إلى القائمة
+    }
+    function go() { if (!wait || !idle()) return; asked = true; $('upd').hidden = true; if (stale || !wait.postMessage) return location.reload(); wait.postMessage({ t: 'skip' }); setTimeout(() => { if (asked) location.reload(); }, 4000); } // احتياط: إن لم يصل controllerchange
+    return { watch, view, go, later() { hidden = true; view(); }, state: () => ({ waiting: !!wait, shown: !$('upd').hidden, asked }) };
+  })();
+  $('updGo').onclick = () => Upd.go(); $('updNo').onclick = () => Upd.later(); E.update = Upd;
+
   // «ألعابي» + صانع الألعاب: أي نموذج ذكاء اصطناعي، بلا مفتاح ولا خادم — ننسخ له الطلب كاملًا (القواعد + العقد) ويلصق المستخدم ردّه هنا.
   // الكود يعمل في الصندوق المعزول نفسه الذي تعمل فيه ألعاب القائمة، ويُحفظ في هذا المتصفح فقط.
   const MINE = 'myGames';
@@ -507,7 +582,7 @@
       if (typeof j.value === 'number') { out.textContent = j.value.toLocaleString('en-US'); if (op === 'hit/') try { localStorage.setItem('visitDay', today); } catch (e) { /* */ } }
     }).catch(() => {});
   })();
-  if ('serviceWorker' in navigator && window.isSecureContext && !DEBUG_NOSW) navigator.serviceWorker.register('sw.js').catch(() => {});
+  if ('serviceWorker' in navigator && window.isSecureContext && !DEBUG_NOSW) navigator.serviceWorker.register('sw.js').then(r => Upd.watch(r)).catch(() => {});
   // الجوال كذراع (#pad=رمز): pad.js يتولّى الصفحة ولا تُبنى القائمة (أخفّ على الجوال)؛ تُبنى إن عاد إليها
   let built = false; const buildOnce = E.buildMenuOnce = () => { if (!built) { built = true; buildMenu(); } };
   if (/^#pad/.test(location.hash)) show('pad'); else { show('menu'); buildOnce(); }

@@ -6,7 +6,9 @@
 // @engine 0.2
 // @capabilities camera.motion audio haptic hud players.local
 
-const ROUNDS = 6, GRACE = 0.7, FREEZE_S = 2.5, ENERGY_LIMIT = 0.03; // الحركة تعني أن أكثر من 3% من البكسلات تغيّرت
+// إعدادات الأسرة (ENGINE.md §3.5): RS يضرب مدة الجولة، DIFF 0 سهل / 1 عادي (سلوك ما قبلها حرفيًا) / 2 صعب. by3(سهل، عادي، صعب).
+let RS = 1, DIFF = 1; const by3 = (e, m, h) => DIFF === 0 ? e : DIFF === 2 ? h : m;
+let ROUNDS = 6, FREEZE_S = 2.5, ENERGY_LIMIT = 0.03; const GRACE = 0.7; // الحركة تعني أن أكثر من 3% من البكسلات تغيّرت
 const SCALE = [262, 294, 330, 392, 440, 523];
 let api, ui, motion, players, state = 'intro', timer = 0, round = 0, energy = 0, beat = 0, caught = false, msg = '', W = 400, H = 700;
 
@@ -15,7 +17,8 @@ function startMusic() { state = 'music'; timer = 3 + Math.random() * 3; beat = 0
 
 defineGame({
   init(a) {
-    api = a; ui = a.ui; // الصورة لا تُعرض: اللعبة تقيس الحركة فقط ومقياسها على الشاشة يكفي
+    api = a; ui = a.ui; RS = (a.prefs && a.prefs.roundScale) || 1; DIFF = a.prefs ? a.prefs.difficulty : 1; // الصورة لا تُعرض: اللعبة تقيس الحركة فقط ومقياسها على الشاشة يكفي
+    ROUNDS = Math.max(2, Math.round(6 * RS)); FREEZE_S = by3(1.5, 2.5, 3.5); ENERGY_LIMIT = by3(0.06, 0.03, 0.02); // سهل: تجمّد أقصر ويُسمح بتمايل أكبر
     players = api.players.local({ names: ['اللاعب 1', 'اللاعب 2'] });
     motion = api.track.motion({ grid: [1, 1], threshold: 28 }, d => { energy = d.energy; });
     setHud();

@@ -4,6 +4,10 @@
 // @capabilities players.pads hud
 // @pads 1-8 free 1v1 2v2 teams
 let api, ui, taps = [], maxX = [], joins = 0, leaves = 0, t = 0, done = false, lastLeft = -1;
+function tok(c, i, x, y, sz, mood) { // اللاعب = لونه وشكله فقط (DESIGN.md §2)، بلا وجه: cheer نبضة خفيفة، wow حلقة بيضاء
+  const r = sz * 0.4 * (mood === 'cheer' && !ui.still ? 1 + 0.08 * Math.sin(ui.t * 10) : 1); ui.shape(c, i, x, y, r);
+  if (mood === 'wow') { c.save(); c.strokeStyle = 'rgba(255,255,255,0.8)'; c.lineWidth = Math.max(2, r * 0.12); c.beginPath(); c.arc(x, y, r * 1.4, 0, 6.283); c.stroke(); c.restore(); }
+}
 defineGame({
   init(a) { api = a; ui = a.ui; api.pads.onJoin(p => { joins++; api.pads.say(p.index, 'مرحبا ' + p.name); }); api.pads.onLeave(p => { leaves++; lastLeft = p.index; });
     api.pads.controls({ stick: true, a: 'نقطة', b: 'إنهاء' }); api.pads.say(-1, 'مرحبا بالجميع'); },
@@ -17,8 +21,8 @@ defineGame({
       for (let i = 0; i < n; i++) scores[i] = taps[i] || 0;
       for (const p of api.pads.list) if (api.teams.of(p.index) >= 0) ts[api.teams.of(p.index)] += taps[p.index] || 0;
       api.end({ score: scores.reduce((a, b) => a + b, 0), scores, teamScores: api.teams.on ? ts : undefined,
-        text: JSON.stringify({ list: api.pads.list, taps, maxX, joins, leaves, lastLeft, mode: api.teams.mode, teamsOn: api.teams.on, teamOf: api.pads.list.map(p => api.teams.of(p.index)), count: api.pads.count, hasMascot: typeof ui.mascot === 'function' }) });
+        text: JSON.stringify({ list: api.pads.list, taps, maxX, joins, leaves, lastLeft, mode: api.teams.mode, teamsOn: api.teams.on, teamOf: api.pads.list.map(p => api.teams.of(p.index)), count: api.pads.count, kitNoArt: !Object.keys(ui).some(k => /masc/i.test(k)) && !Object.keys(ui.theme).some(k => /masc/i.test(k)) }) });
     }
   },
-  render(c, w, h) { ui.background(c); let i = 0; for (const p of api.pads.list) ui.mascot(c, p.character, w * (i++ + 1) / (api.pads.list.length + 1), h / 2, 120, { mood: p.connected ? 'cheer' : 'sad' }); ui.draw(c); }
+  render(c, w, h) { ui.background(c); let i = 0; for (const p of api.pads.list) tok(c, p.colorIndex, w * (i++ + 1) / (api.pads.list.length + 1), h / 2, 120, p.connected ? 'cheer' : 'sad'); ui.draw(c); }
 });

@@ -43,7 +43,6 @@ select{font:inherit;color:var(--fg);background:var(--surface-hi);border:1px soli
 .acts{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .acts .ico{width:56px;padding:0;font-size:22px}
 #inst{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:color-mix(in srgb,var(--brand) 14%,var(--surface));border:1px solid color-mix(in srgb,var(--brand) 45%,transparent);border-radius:var(--r-l);padding:14px 18px;margin:0 0 20px;animation:rise .24s var(--ease) both}#inst[hidden],#inst button[hidden]{display:none}#inst .ii{font-size:30px}#inst .it{flex:1 1 220px;display:grid;gap:2px}#inst .it b{font-size:17px}#inst .it small{color:var(--mut);font-size:14px;line-height:1.6}#inst .ia{display:flex;gap:8px}#inst button{min-height:44px;padding:0 18px}
-#settings{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-l);padding:8px 20px;margin:0 0 24px;box-shadow:var(--shadow);max-width:640px;animation:rise .24s var(--ease) both}
 #make{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-l);padding:8px 20px 16px;margin:32px 0 24px;box-shadow:var(--shadow);max-width:760px}
 #make h2,.sech{font-size:18px;margin:14px 0 4px}.sech{margin:28px 0 12px}
 .steps{margin:0;padding-inline-start:22px}.steps li{margin:14px 0}.steps b{display:block;margin-bottom:8px}
@@ -51,24 +50,50 @@ select{font:inherit;color:var(--fg);background:var(--surface-hi);border:1px soli
 .steps .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
 a.btn{display:inline-flex;align-items:center;min-height:48px;padding:0 18px;border-radius:var(--r-m);border:1px solid var(--line);background:var(--surface-hi);color:var(--fg);text-decoration:none;font-weight:600}
 #mine .card{position:relative}.del{position:absolute;top:8px;inset-inline-end:8px;min-height:36px;width:36px;padding:0;border-radius:50%;z-index:2}
-#settings h2{font-size:18px;margin:12px 0 4px}
-.set{display:flex;justify-content:space-between;align-items:center;gap:16px;min-height:56px;border-top:1px solid var(--line);color:var(--fg);font-size:16px}
-.set:first-of-type{border-top:0}
-.set input[type=checkbox]{appearance:none;-webkit-appearance:none;flex:none;width:52px;height:32px;margin:0;border-radius:99px;background:var(--surface-hi);border:1px solid var(--line);position:relative;cursor:pointer;transition:background .2s var(--ease)}
-.set input[type=checkbox]::after{content:"";position:absolute;top:3px;inset-inline-start:3px;width:24px;height:24px;border-radius:50%;background:var(--mut);transition:inset-inline-start .2s var(--ease),background .2s var(--ease)}
+/* الإعدادات (0.5.2): ورقة فوق القائمة، مجموعات بعناوين، أهداف لمس ≥48px */
+#settings{position:fixed;inset:0;z-index:20;overflow:auto;overscroll-behavior:contain;padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));background:color-mix(in srgb,var(--bg) 78%,transparent);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+#settings .sheet{width:min(100%,1040px);margin:0 auto;background:var(--bg2);border:1px solid var(--line);border-radius:var(--r-l);padding:0 20px 24px;box-shadow:var(--shadow);animation:rise .24s var(--ease) both}
+.sethead{position:sticky;top:max(-16px,calc(-1 * env(safe-area-inset-top)));z-index:2;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 0 10px;background:var(--bg2);border-bottom:1px solid var(--line);margin:0 -20px;padding-inline:20px;border-radius:var(--r-l) var(--r-l) 0 0}
+.sethead h2{margin:0;font-size:24px;font-weight:800}.sethead .ico{width:48px;min-height:48px;padding:0;border-radius:50%;font-size:18px}
+.setsaved{margin:12px 0 16px}
+.sgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px;align-items:start}
+.sgroup{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-m);padding:4px 18px 12px}
+.sgroup h3{display:flex;align-items:center;gap:10px;font-size:17px;font-weight:800;margin:14px 0 6px}
+.set{display:flex;justify-content:space-between;align-items:center;gap:16px;min-height:56px;margin:0;border-top:1px solid var(--line);color:var(--fg);font-size:16px}
+.sgroup h3+.set{border-top:0}
+.set.col{flex-direction:column;align-items:stretch;gap:10px;padding:12px 0}.set .sl{display:flex;justify-content:space-between;align-items:center}.set .sl b{color:var(--mut);font-weight:700;font-variant-numeric:tabular-nums}
+.set input[type=checkbox]{appearance:none;-webkit-appearance:none;flex:none;width:56px;height:34px;margin:0;border-radius:99px;background:var(--surface-hi);border:1px solid var(--line);position:relative;cursor:pointer;transition:background .2s var(--ease)}
+.set input[type=checkbox]::after{content:"";position:absolute;top:4px;inset-inline-start:4px;width:24px;height:24px;border-radius:50%;background:var(--mut);transition:inset-inline-start .2s var(--ease),background .2s var(--ease)}
 .set input[type=checkbox]:checked{background:var(--brand)}
-.set input[type=checkbox]:checked::after{inset-inline-start:23px;background:var(--on-brand)}
-.sethint{color:var(--mut);font-size:13px;margin:0 0 10px}
+.set input[type=checkbox]:checked::after{inset-inline-start:26px;background:#fff;box-shadow:0 2px 6px #0005}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;background:var(--surface-hi);border:1px solid var(--line);border-radius:14px}
+.seg button{min-height:48px;padding:0 6px;border:0;border-radius:11px;background:transparent;color:var(--mut);font-size:16px}
+.seg button:hover{background:color-mix(in srgb,var(--fg) 7%,transparent)}
+.seg button[aria-checked=true]{background:var(--brand);color:var(--on-brand);font-weight:800;box-shadow:0 6px 16px -8px var(--brand)}
+.set input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:36px;margin:0;background:transparent;cursor:pointer}
+.set input[type=range]::-webkit-slider-runnable-track{height:10px;border-radius:99px;background:var(--surface-hi);border:1px solid var(--line)}
+.set input[type=range]::-moz-range-track{height:10px;border-radius:99px;background:var(--surface-hi);border:1px solid var(--line)}
+.set input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:30px;height:30px;margin-top:-11px;border-radius:50%;background:var(--brand);border:3px solid var(--bg2);box-shadow:0 4px 12px -4px var(--brand)}
+.set input[type=range]::-moz-range-thumb{width:26px;height:26px;border-radius:50%;background:var(--brand);border:3px solid var(--bg2)}
+.set input[type=range]:disabled{opacity:.4}
+.sethint{color:var(--mut);font-size:14px;line-height:1.7;margin:0 0 10px}.sethint.about{margin:8px 0 12px}
+a.btn.sm{min-height:44px;padding:0 16px;font-size:15px}
+button.danger{width:100%;min-height:56px;margin:4px 0 6px;color:var(--bad);background:color-mix(in srgb,var(--bad) 12%,var(--surface));border-color:color-mix(in srgb,var(--bad) 45%,transparent)}
+button.danger:hover{background:color-mix(in srgb,var(--bad) 20%,var(--surface))}
+/* شريط التحديث: يظهر في القائمة فقط، لا أثناء لعبة ولا في ردهة التلفاز */
+#upd{position:fixed;z-index:30;left:16px;right:16px;bottom:max(16px,env(safe-area-inset-bottom));margin-inline:auto;width:fit-content;max-width:calc(100% - 32px);display:flex;align-items:center;gap:12px;padding:8px;padding-inline-start:18px;background:var(--surface);color:var(--fg);border:1px solid color-mix(in srgb,var(--brand) 55%,transparent);border-radius:99px;box-shadow:0 18px 44px -14px #000d;animation:rise .24s var(--ease) both}
+#upd>span{font-size:22px}#upd b{font-size:16px;white-space:nowrap}#upd .pri{min-height:48px;border-radius:99px;padding:0 22px}#upd .ico{flex:none;width:44px;min-height:44px;padding:0;border:0;border-radius:50%;background:transparent;color:var(--mut)}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,290px),1fr));gap:20px}
 #list .card{padding:0;margin:0;overflow:hidden;border-radius:var(--r-l);display:flex;flex-direction:column;min-height:0;box-shadow:var(--shadow);animation:rise .24s var(--ease) both;transition:transform .2s var(--ease),border-color .2s var(--ease),box-shadow .2s var(--ease)}
 #list .card:nth-child(2){animation-delay:30ms}#list .card:nth-child(3){animation-delay:60ms}#list .card:nth-child(4){animation-delay:90ms}#list .card:nth-child(5){animation-delay:120ms}#list .card:nth-child(n+6){animation-delay:150ms}
 #list .card:hover:not(:disabled){transform:translateY(-3px);border-color:color-mix(in srgb,var(--ac) 70%,transparent);box-shadow:0 18px 36px -16px color-mix(in srgb,var(--ac) 60%,#000)}
 #list .card:focus-visible{outline-offset:3px}
-.cover{position:relative;display:block;aspect-ratio:16/10;overflow:hidden;background:radial-gradient(120% 90% at 25% 15%,var(--ac-hi),var(--ac) 45%,var(--ac-lo))}
-.cover::before,.cover::after{content:"";position:absolute;border-radius:50%;background:#fff;opacity:.13}
-.cover::before{width:62%;aspect-ratio:1;inset-inline-end:-14%;bottom:-38%}
-.cover::after{width:26%;aspect-ratio:1;inset-inline-start:8%;top:-10%;opacity:.18}
-.art{position:absolute;inset:0;display:grid;place-items:center;font-size:clamp(56px,9vw,84px);filter:drop-shadow(0 8px 14px #0006);transition:opacity .2s}
+.cover{position:relative;display:block;aspect-ratio:16/10;overflow:hidden;background:radial-gradient(46% 62% at 50% 54%,color-mix(in srgb,var(--ac) 42%,transparent),transparent 72%),radial-gradient(120% 100% at 50% 110%,color-mix(in srgb,var(--ac-lo) 55%,#120f22),transparent 70%),linear-gradient(180deg,#1d1934,#120f22)}
+/* بلا غلاف (0.5.2): ملصق مولَّد مقصود على ليل بنفسجي كالأغلفة المرسومة — توهّج بلون البصمة، أيقونة فعل اللعبة في قرص زجاجي، ونجوم خافتة. لا وجوه ولا شخصيات */
+.cover::before,.cover::after{content:"";position:absolute;inset:0;pointer-events:none}
+.cover::before{background:radial-gradient(1.5px 1.5px at 14% 22%,#fff9,transparent 60%),radial-gradient(1.5px 1.5px at 82% 18%,#fff8,transparent 60%),radial-gradient(2px 2px at 70% 74%,#fff6,transparent 60%),radial-gradient(1.5px 1.5px at 24% 80%,#fff7,transparent 60%),radial-gradient(2px 2px at 90% 52%,#fff5,transparent 60%),radial-gradient(1.5px 1.5px at 8% 54%,#fff6,transparent 60%)}
+.cover::after{inset:auto;left:50%;top:52%;width:40%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffffff2e,#ffffff08 60%);border:2px solid color-mix(in srgb,var(--ac) 70%,#fff 10%);box-shadow:0 0 0 10px color-mix(in srgb,var(--ac) 14%,transparent),0 18px 40px -12px color-mix(in srgb,var(--ac) 80%,#000)}
+.art{position:absolute;inset:0;z-index:1;display:grid;place-items:center;padding-top:2%;font-size:clamp(40px,5.4vw,60px);filter:drop-shadow(0 6px 10px #0008);transition:opacity .2s}
 .pic{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .2s}
 .has .pic{opacity:1}.has .art,.has::before,.has::after{opacity:0}
 .body{display:flex;flex-direction:column;gap:6px;padding:16px 18px 18px;flex:1}
@@ -140,7 +165,7 @@ a.btn{display:inline-flex;align-items:center;min-height:48px;padding:0 18px;bord
 .tvplayers{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
 .pcard{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:178px;padding:10px 8px 12px;background:var(--surface);border:2px solid color-mix(in srgb,var(--pc,var(--line)) 70%,transparent);border-radius:var(--r-l);color:var(--fg);font:inherit;box-shadow:0 10px 26px -16px var(--pc,#000);position:relative}
 .pcard b{font-size:19px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pcard small{color:var(--mut);font-size:14px}
-.pcard .mc{width:110px;height:110px}.pcard.off{opacity:.55}.pcard.empty{border-style:dashed;border-color:var(--line);box-shadow:none;color:var(--mut)}.pcard.empty b{font-size:16px;font-weight:600;color:var(--mut)}
+.pcard .psh{width:84px;height:84px;margin:6px 0 10px;filter:drop-shadow(0 8px 14px color-mix(in srgb,var(--pc) 45%,transparent))}.pcard.off{opacity:.55}.pcard.empty{border-style:dashed;border-color:var(--line);box-shadow:none;color:var(--mut)}.pcard.empty b{font-size:16px;font-weight:600;color:var(--mut)}
 .slot{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;border:2px dashed var(--line);font-size:24px;margin-bottom:8px}
 .team{display:inline-block;border-radius:99px;padding:2px 14px;font-size:14px;font-weight:700;color:#1a1430}.team.t0{background:#ff8a3d}.team.t1{background:#a37bff}.pcard .team{position:absolute;top:10px;inset-inline-start:10px}
 .tvmodes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.tvmodes .chip{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70px;padding:6px 10px;line-height:1.3}.tvmodes .chip b{font-size:18px}.tvmodes .chip small{font-size:13px;font-weight:400;color:var(--mut)}.tvmodes .chip.on small{color:inherit;opacity:.8}
@@ -152,9 +177,9 @@ a.btn{display:inline-flex;align-items:center;min-height:48px;padding:0 18px;bord
 .tvwarn{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:5;max-width:min(90vw,720px)}
 .tvres{max-width:1500px;margin:0 auto;text-align:center;display:flex;flex-direction:column;align-items:center;gap:12px;padding-top:2vh}.tvres h1{font-size:clamp(32px,5vw,64px);margin:8px 0 0}.rtext{color:var(--mut);font-size:18px;margin:0;max-width:60ch;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere}
 .rrow{display:flex;flex-wrap:wrap;justify-content:center;gap:16px}.rcard{display:flex;flex-direction:column;align-items:center;min-width:170px;padding:12px 16px 16px;background:var(--surface);border:2px solid var(--line);border-radius:var(--r-l)}.rcard.win{border-color:var(--pc);box-shadow:0 0 0 4px color-mix(in srgb,var(--pc) 35%,transparent),0 18px 36px -16px var(--pc)}
-.rcard .mc{width:140px;height:140px}.rcard b{font-size:20px}.rs{font-size:34px;font-weight:800;font-variant-numeric:tabular-nums}.rcard small{color:var(--mut)}
+.rcard .psh{width:96px;height:96px;margin:8px 0 10px}.rcard b{font-size:20px}.rs{font-size:34px;font-weight:800;font-variant-numeric:tabular-nums}.rcard small{color:var(--mut)}
 .rteams{display:grid;grid-template-columns:1fr 1fr;gap:24px;width:100%}.rteam{background:var(--surface);border:2px solid var(--line);border-radius:var(--r-l);padding:12px 16px 18px}.rteam.t0{border-color:#ff8a3d66}.rteam.t1{border-color:#a37bff66}.rteam.win.t0{border-color:#ff8a3d;box-shadow:0 0 0 5px #ff8a3d44}.rteam.win.t1{border-color:#a37bff;box-shadow:0 0 0 5px #a37bff44}
-.rteam h2{margin:4px 0 0;font-size:26px}.rteam.t0 h2{color:#ff8a3d}.rteam.t1 h2{color:#a37bff}.rbig{font-size:64px;font-weight:800;line-height:1.1}.rteam .rcard{min-width:150px;background:var(--bg2)}.rteam .rcard .mc{width:110px;height:110px}
+.rteam h2{margin:4px 0 0;font-size:26px}.rteam.t0 h2{color:#ff8a3d}.rteam.t1 h2{color:#a37bff}.rbig{font-size:64px;font-weight:800;line-height:1.1}.rteam .rcard{min-width:150px;background:var(--bg2)}.rteam .rcard .psh{width:80px;height:80px}
 .tvres .row{justify-content:center}.tvres .row button{min-width:220px;min-height:64px;font-size:20px}
 @media (max-width:980px){.tvw{grid-template-columns:1fr}.tvplayers{grid-template-columns:repeat(2,minmax(0,1fr))}.tvmodes{grid-template-columns:repeat(2,minmax(0,1fr))}.qr{width:min(100%,320px)}.tvcode b{width:64px;height:76px;font-size:44px}.rteams{grid-template-columns:1fr}}
 /* الجوال ذراعًا (pad.js): أهداف كبيرة لطفل في الخامسة */
@@ -162,18 +187,19 @@ a.btn{display:inline-flex;align-items:center;min-height:48px;padding:0 18px;bord
 .pbox{max-width:520px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center}
 .pbox h1{font-size:28px;margin:0;line-height:1.35}.pbox p{margin:0}.pbox>button{width:100%}
 .ppick{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%}
-.pch{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:156px;padding:6px;border-radius:var(--r-l);border:3px solid transparent;background:var(--surface);font:inherit;color:var(--fg)}.pch .mc{width:112px;height:112px}.pch b{font-size:20px}
+.pch{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:156px;padding:6px;border-radius:var(--r-l);border:3px solid transparent;background:var(--surface);font:inherit;color:var(--fg)}.pch .psh{width:76px;height:76px;margin-bottom:8px}.pch b{font-size:20px}.pch small{color:var(--mut);font-size:15px}
 .pch.on{border-color:var(--pc);background:color-mix(in srgb,var(--pc) 22%,var(--surface));box-shadow:0 12px 28px -14px var(--pc)}
 .pname,.pcode{width:100%;font:inherit;font-size:22px;text-align:center;color:var(--fg);background:var(--surface);border:2px solid var(--line);border-radius:var(--r-m);min-height:64px;padding:0 14px}
 .pcode{font-size:48px;font-weight:800;letter-spacing:.3em;min-height:88px;text-transform:uppercase}
 .pstart,.pbig{min-height:84px!important;font-size:30px!important;border-radius:24px!important}
 .pmsg{color:var(--warn);font-size:17px;min-height:1.6em}.pmut{color:var(--mut);font-size:17px}.pwait{font-size:22px;font-weight:700}.plead{font-size:19px;font-weight:700;color:var(--warn)}.pfoot{color:var(--mut)}
-.pbigm{width:220px;height:220px}
+.psh{display:block;flex:none;overflow:visible}
+.pbigm{width:150px;height:150px;margin:6px 0 8px;filter:drop-shadow(0 14px 24px #0008)}.pbigm.dim{opacity:.45}.pbigm.pulse{animation:psp 1.6s var(--ease) infinite alternate}@keyframes psp{to{transform:scale(1.06)}}
 .pdots{display:flex;gap:10px}.pdots i{width:14px;height:14px;border-radius:50%;background:var(--brand);animation:pd 1s infinite alternate}.pdots i:nth-child(2){animation-delay:.2s}.pdots i:nth-child(3){animation-delay:.4s}@keyframes pd{to{opacity:.2;transform:scale(.6)}}
 .plist{display:grid;gap:10px;width:100%}.plist .card{margin:0;min-height:64px;font-size:20px;font-weight:700;text-align:center}.plist .card.on{border-color:var(--brand);background:color-mix(in srgb,var(--brand) 22%,var(--surface))}
 .pmodes{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}.pmodes .chip{min-height:60px;font-size:18px}
 .pctl{position:fixed;inset:0;display:flex;flex-direction:column;padding:max(8px,env(safe-area-inset-top)) 10px max(10px,env(safe-area-inset-bottom));touch-action:none;background:var(--bg)}
-.ptop{display:flex;align-items:center;gap:10px;min-height:64px;padding:0 6px}.ptop .mc{width:60px;height:60px}.ptop b{font-size:22px;flex:1;text-align:start;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.prtt{color:var(--mut);font-size:12px;direction:ltr}
+.ptop{display:flex;align-items:center;gap:10px;min-height:64px;padding:0 6px}.ptop .psh{width:40px;height:40px}.ptop b{font-size:22px;flex:1;text-align:start;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.prtt{color:var(--mut);font-size:12px;direction:ltr}
 .pplay{flex:1;display:grid;grid-template-columns:1.15fr 1fr;gap:10px;direction:ltr;min-height:0}
 .pstick{position:relative;border-radius:28px;background:var(--surface);border:2px dashed var(--line);touch-action:none;overflow:hidden}.pstick canvas{position:absolute;inset:0}.pstick.on{border-style:solid;border-color:color-mix(in srgb,var(--brand) 50%,transparent)}
 .phint{position:absolute;bottom:12px;left:0;right:0;text-align:center;color:var(--mut);font-size:15px;pointer-events:none;direction:rtl}
@@ -184,9 +210,12 @@ a.btn{display:inline-flex;align-items:center;min-height:48px;padding:0 18px;bord
 .pbtn.down,.pbtn:active{transform:translateY(8px) scale(.97);box-shadow:0 2px 0 color-mix(in srgb,var(--pc) 55%,#000),0 8px 18px -10px var(--pc)}
 .pctl.nostick .pplay{grid-template-columns:1fr}.pctl.nostick .pbtn.pa{width:min(78vw,60vh,320px);font-size:34px}
 .psay{min-height:56px;display:grid;place-items:center;font-size:20px;font-weight:700;text-align:center;color:var(--mut);padding:6px;border-radius:var(--r-m);transition:background .2s,color .2s}.psay.on{background:color-mix(in srgb,var(--warn) 22%,var(--surface));color:var(--fg)}
-@media (orientation:landscape) and (max-height:520px){.ptop{min-height:48px}.ptop .mc{width:44px;height:44px}.psay{min-height:40px;font-size:17px}.pbtns{flex-direction:row}.pbtn{width:min(40%,34vh*1.3,180px)}}
+@media (orientation:landscape) and (max-height:520px){.ptop{min-height:48px}.ptop .psh{width:32px;height:32px}.psay{min-height:40px;font-size:17px}.pbtns{flex-direction:row}.pbtn{width:min(40%,34vh*1.3,180px)}}
 @media (min-width:1600px){.wrap{max-width:1640px}.grid{grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:28px}#list .card b{font-size:23px}#list .card small{font-size:17px}h1{font-size:40px}.acts button.big{min-height:64px;font-size:20px}.body{padding:20px 22px 22px}#ser>*{max-width:760px}#ov .panel{width:min(100%,680px);padding:40px 36px 32px}#ovI{font-size:64px}#ovT{font-size:34px}#ovK{font-size:18px}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+html.calm *,html.calm *::before,html.calm *::after{animation:none!important;transition:none!important}
+/* نص أكبر (0.5.2): تكبير واجهة المضيف كلها بنسبة ثابتة؛ ألعاب api.ui تكبّر نصها بـapi.prefs.textScale */
+html.big #menu .wrap,html.big #settings .sheet,html.big #ser>*,html.big #ov .panel,html.big .pbox,html.big #upd{zoom:1.18}
 </style>
 </head>
 <body>
@@ -212,17 +241,6 @@ a.btn{display:inline-flex;align-items:center;min-height:48px;padding:0 18px;bord
       <div class="it"><b>شاشة كبيرة؟ اجعلها شاشة العرض</b><small>يمسح كل لاعب رمزًا بجواله ويصير جواله ذراع التحكّم، والشاشة للعرض فقط.</small></div>
       <div class="ia"><button class="pri" id="tvHintGo">العب بالجوالات</button></div>
     </section>
-    <section id="settings" hidden aria-label="الإعدادات">
-      <h2>الإعدادات</h2>
-      <label class="set">الكاميرا <select id="facing"><option value="user" selected>الأمامية</option><option value="environment">الخلفية</option></select></label>
-      <label class="set">عرض صورة الكاميرا في الألعاب <input type="checkbox" id="camview" checked></label>
-      <p class="sethint">الصورة تبقى على شاشتك ولا تُحفظ ولا تُرسل.</p>
-      <label class="set">شرح قصير قبل كل لعبة <input type="checkbox" id="howto" checked></label>
-      <p class="sethint">مشهد متحرّك لثلاث ثوانٍ ونصف يُري الأطفال طريقة اللعب بدل العدّ 3-2-1.</p>
-      <p class="set" id="statsL">زوّار الموقع <b id="stats">—</b></p>
-      <p class="sethint">عدّاد مجهول: يُحسب كل جهاز مرة في اليوم، بلا كوكيز ولا أي معلومة عنك.</p>
-      <label class="set" id="synthL" hidden>مصدر اصطناعي (تجارب) <input type="checkbox" id="synth"></label>
-    </section>
     <div id="list" class="grid"></div>
     <h2 class="sech" id="myH" hidden>ألعابي</h2>
     <div id="mine" class="grid"></div>
@@ -238,6 +256,52 @@ a.btn{display:inline-flex;align-items:center;min-height:48px;padding:0 18px;bord
     </section>
   </div>
 </div>
+<section id="settings" hidden aria-label="الإعدادات" role="dialog" aria-modal="true" aria-labelledby="setH">
+  <div class="sheet">
+  <header class="sethead"><h2 id="setH">الإعدادات</h2><button class="ico" id="setClose" aria-label="إغلاق الإعدادات">✕</button></header>
+  <p class="sethint setsaved">تُحفظ اختياراتك على هذا الجهاز فورًا، وتسري من اللعبة التالية.</p>
+  <div class="sgrid">
+    <section class="sgroup" aria-labelledby="gSnd"><h3 id="gSnd"><span aria-hidden="true">🔊</span> الصوت والاهتزاز</h3>
+      <label class="set">أصوات الألعاب <input type="checkbox" id="pSound" checked></label>
+      <div class="set col"><span class="sl">مستوى الصوت <b id="pVolV">100%</b></span><input type="range" id="pVol" min="0" max="100" step="10" value="100" aria-label="مستوى الصوت"></div>
+      <label class="set">الاهتزاز <input type="checkbox" id="pHaptic" checked></label>
+      <p class="sethint">في الأجهزة التي تدعمه، ويشمل اهتزاز جوالات اللاعبين في وضع التلفاز.</p>
+    </section>
+    <section class="sgroup" aria-labelledby="gPlay"><h3 id="gPlay"><span aria-hidden="true">🎮</span> اللعب</h3>
+      <div class="set col"><span class="sl">مدة الجولة</span><div class="seg" role="radiogroup" aria-label="مدة الجولة" data-p="round"><button type="button" data-v="0">قصيرة</button><button type="button" data-v="1">عادية</button><button type="button" data-v="2">طويلة</button></div></div>
+      <div class="set col"><span class="sl">الصعوبة</span><div class="seg" role="radiogroup" aria-label="الصعوبة" data-p="diff"><button type="button" data-v="0">سهل</button><button type="button" data-v="1">عادي</button><button type="button" data-v="2">صعب</button></div></div>
+      <p class="sethint">«سهل» يناسب طفلًا في الرابعة: أبطأ وأوسع وأكثر تسامحًا.</p>
+      <label class="set">شرح قصير قبل كل لعبة <input type="checkbox" id="howto" checked></label>
+      <p class="sethint">مشهد متحرّك لثلاث ثوانٍ ونصف يُري الأطفال طريقة اللعب بدل العدّ 3-2-1.</p>
+    </section>
+    <section class="sgroup" aria-labelledby="gCam"><h3 id="gCam"><span aria-hidden="true">📷</span> الكاميرا</h3>
+      <label class="set">الكاميرا <select id="facing"><option value="user" selected>الأمامية</option><option value="environment">الخلفية</option></select></label>
+      <label class="set">عرض صورة الكاميرا في الألعاب <input type="checkbox" id="camview" checked></label>
+      <p class="sethint">الصورة تبقى على شاشتك ولا تُحفظ ولا تُرسل.</p>
+      <div class="set col"><span class="sl">حساسية الحركة</span><div class="seg" role="radiogroup" aria-label="حساسية الحركة" data-p="sens"><button type="button" data-v="0">منخفضة</button><button type="button" data-v="1">عادية</button><button type="button" data-v="2">عالية</button></div></div>
+      <p class="sethint">ارفعها إن كانت الغرفة خافتة أو اللاعب بعيدًا، واخفضها إن التُقطت حركة لم يقم بها أحد.</p>
+      <label class="set" id="synthL" hidden>مصدر اصطناعي (تجارب) <input type="checkbox" id="synth"></label>
+    </section>
+    <section class="sgroup" aria-labelledby="gView"><h3 id="gView"><span aria-hidden="true">👁️</span> العرض</h3>
+      <label class="set">تقليل الوميض والحركة <input type="checkbox" id="pCalm"></label>
+      <p class="sethint">وميض أخفّ وحركة أهدأ، لمن يتعب من الأضواء السريعة. يتبع إعداد جهازك افتراضيًا.</p>
+      <label class="set">نص أكبر <input type="checkbox" id="pBig"></label>
+    </section>
+    <section class="sgroup" aria-labelledby="gAbout"><h3 id="gAbout"><span aria-hidden="true">ℹ️</span> حول</h3>
+      <p class="set">الإصدار <b id="aboutVer" dir="ltr">—</b></p>
+      <p class="set">الشيفرة مفتوحة <a class="btn sm" href="https://github.com/a541ana-droid/camera-games" target="_blank" rel="noopener">GitHub ↗</a></p>
+      <p class="set">الرخصة <b>MIT</b></p>
+      <p class="sethint about">الصورة تُحلَّل على جهازك ولا تُرسل ولا تُحفظ في أي مكان. لا حساب ولا كوكيز. الطلبات الخارجية الوحيدة: عدّاد زوّار مجهول مرة في اليوم، ووسيط ربط الجوالات بالتلفاز في وضع التلفاز (أوامر التحكم فقط، بلا صورة ولا صوت). الألعاب تعمل في صندوق معزول لا يصل إلى الشبكة.</p>
+      <p class="set" id="statsL">زوّار الموقع <b id="stats">—</b></p>
+      <p class="sethint">عدّاد مجهول: يُحسب كل جهاز مرة في اليوم، بلا كوكيز ولا أي معلومة عنك.</p>
+    </section>
+    <section class="sgroup" aria-labelledby="gData"><h3 id="gData"><span aria-hidden="true">🗂️</span> بياناتي</h3>
+      <p class="sethint">«ألعابي» وإعداداتك وكل ما حفظه التطبيق على هذا الجهاز. لا شيء منها على أي خادم.</p>
+      <button class="danger" id="pWipe">🗑️ مسح بياناتي</button>
+    </section>
+  </div>
+  </div>
+</section>
 <div id="stage" hidden>
   <video id="cam" class="off" playsinline muted autoplay></video>
   <canvas id="cv" dir="ltr"></canvas>
@@ -248,19 +312,20 @@ a.btn{display:inline-flex;align-items:center;min-height:48px;padding:0 18px;bord
   <div id="ov" hidden><div class="panel"><div id="ovI" aria-hidden="true"></div><div id="ovK"></div><div id="ovT" role="status"></div><div class="row"><button class="pri" id="ovA">إعادة</button><button id="ovB">القائمة</button></div></div></div>
 </div>
 <div id="priv" aria-live="polite"><div id="camind" hidden></div><div id="micInd" hidden>الميكروفون يعمل — لا يُسجَّل ولا يغادر الجهاز</div></div>
+<div id="upd" role="status" aria-live="polite" hidden><span aria-hidden="true">✨</span><b>نسخة جديدة جاهزة</b><button class="pri" id="updGo">تحديث</button><button class="ico" id="updNo" aria-label="لاحقًا">✕</button></div>
 <div id="ser" class="view" hidden></div>
 <div id="tv" class="view" hidden></div>
 <div id="pad" class="view" hidden></div>
 <div id="dbg" hidden></div>
-<script src="tracker.js?v=051"></script>
-<script src="draw.js?v=051"></script>
-<script src="mic.js?v=051"></script>
-<script src="sensors.js?v=051"></script>
-<script src="mascot.js?v=051"></script>
-<script src="net.js?v=051"></script>
-<script src="engine.js?v=051"></script>
-<script src="series.js?v=051"></script>
-<script src="tv.js?v=051"></script>
-<script src="pad.js?v=051"></script>
+<script src="tracker.js?v=052"></script>
+<script src="draw.js?v=052"></script>
+<script src="mic.js?v=052"></script>
+<script src="sensors.js?v=052"></script>
+<script src="players.js?v=052"></script>
+<script src="net.js?v=052"></script>
+<script src="engine.js?v=052"></script>
+<script src="series.js?v=052"></script>
+<script src="tv.js?v=052"></script>
+<script src="pad.js?v=052"></script>
 </body>
 </html>

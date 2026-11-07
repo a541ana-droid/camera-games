@@ -8,8 +8,10 @@
 // مرجع القدرتين الجديدتين: api.track.lanes (حارات بحسب الحركة) و api.track.colorPerPlayer (لون لكل لاعب).
 // داخل سلسلة (دوري) تُلعب مرة واحدة بعدد حاراتها = عدد لاعبي السلسلة، وتُبلغ بالمراكز عبر api.end({ranks, scores}) فتُحتسب النقاط.
 
+// إعدادات الأسرة (ENGINE.md §3.5): RS يضرب مدة الجولة، DIFF 0 سهل / 1 عادي (سلوك ما قبلها حرفيًا) / 2 صعب. by3(سهل، عادي، صعب).
+let RS = 1, DIFF = 1; const by3 = (e, m, h) => DIFF === 0 ? e : DIFF === 2 ? h : m;
 const NAMES = ['1', '2', '3', '4'], COLORS = ['red', 'green', 'blue', 'yellow'], COLOR_AR = ['أحمر', 'أخضر', 'أزرق', 'أصفر'], HEX = ['#e5484d', '#4cc38a', '#3b82f6', '#f5d90a'];
-const FULL_WAVE = 0.08, SPEED = 0.13; // طاقة حارة تعدّ "تلويحًا كاملًا"، وأقصى سرعة (حصة من الطريق/ث)
+let FULL_WAVE = 0.08, SPEED = 0.13; // طاقة حارة تعدّ "تلويحًا كاملًا"، وأقصى سرعة (حصة من الطريق/ث)
 let api, ui, state = 'intro', count = 2, mode = 'motion', handle = null, lanes = [], pos = [], speed = [], last = [], t = 0, winner = -1, cd = 0, W = 400, H = 700;
 const cntR = [], modeR = [], startR = { x: 0, y: 0, w: 180, h: 56 };
 
@@ -42,7 +44,7 @@ function results() { // مراكز اللاعبين: الأقرب إلى الخ�
 }
 
 defineGame({
-  init(a) { api = a; ui = a.ui; api.view.showCamera(true); const s = api.view.size(); W = s.w; H = s.h; layout(W, H); count = Math.max(2, Math.min(4, api.players.local({ names: ['1', '2'] }).names.length)); },
+  init(a) { api = a; ui = a.ui; RS = (a.prefs && a.prefs.roundScale) || 1; DIFF = a.prefs ? a.prefs.difficulty : 1; api.view.showCamera(true); SPEED = 0.13 / RS; FULL_WAVE = by3(0.05, 0.08, 0.11); const s = api.view.size(); W = s.w; H = s.h; layout(W, H); count = Math.max(2, Math.min(4, api.players.local({ names: ['1', '2'] }).names.length)); },
   onResize(w, h) { W = w; H = h; layout(w, h); },
   onTap(x, y) {
     if (state !== 'intro') return;
